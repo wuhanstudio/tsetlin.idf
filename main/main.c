@@ -6,7 +6,64 @@
 #include "sdcard.h"
 #include "mnist.h"
 
+#include "tsetlin.pb-c.h"
+
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
 static const char *TAG = "main";
+
+uint8_t* read_file(const char* path, size_t* out_size) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return NULL;
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    uint8_t* buffer = malloc(size);
+    if (!buffer) {
+        fclose(f);
+        return NULL;
+    }
+
+    fread(buffer, 1, size, f);
+    fclose(f);
+
+    *out_size = size;
+    return buffer;
+}
+
+uint8_t clause_evaluate(ClauseCompressed* clause, uint8_t* input, uint32_t n_state, uint32_t n_feature) {
+    for (size_t k = 0; k < clause->n_pos_literal; k++)
+    {
+        uint32_t idx_literal = clause->position[k];
+        if (clause->data[k] > n_state / 2)
+        {
+            // positive literal is included
+            if (input[idx_literal] <= 75)
+            {
+                return 0; // Clause evaluates to false
+            }
+        }
+    }
+
+    for (size_t k = 0; k < clause->n_neg_literal; k++)
+    {
+        uint32_t idx_literal = clause->position[clause->n_pos_literal + k];
+        if (clause->data[clause->n_pos_literal + k] > n_state / 2)
+        {
+            // negative literal is included
+            if (input[idx_literal] > 75)
+            {
+                return 0; // Clause evaluates to false
+            }
+        }
+    }
+
+    return 1; // Clause evaluates to true
+}
 
 void app_main(void)
 {
@@ -58,6 +115,157 @@ void app_main(void)
         ESP_LOGI(TAG, "Testing image label: %d", test_label);
         free(test_img);
     }
+
+    size_t size = 0;
+    uint8_t* data = read_file(MOUNT_POINT"/tsetlin_model.cpb", &size);
+    if (!data) {
+        printf("Failed to read file\n");
+        return;
+    }
+
+    Tsetlin* model = tsetlin__unpack(NULL, size, data);
+    free(data);
+
+    if (!model) {
+        printf("Failed to unpack protobuf\n");
+        return;
+    }
+
+    printf("n_class   = %lu\n", model->n_class);
+    printf("n_feature = %lu\n", model->n_feature);
+    printf("n_clause  = %lu\n", model->n_clause);
+    printf("n_state   = %lu\n", model->n_state);
+    printf("model_type = %u\n", model->model_type);
+
+    // Evaluate model on a random test image
+    img_index = esp_random() % test_img_count;
+    uint8_t* img = mnist_load_image(MOUNT_POINT"/t10k-images-idx3-ubyte", img_index, rows, cols);
+    if (!img) {
+        printf("Failed to load test image\n");
+        tsetlin__free_unpacked(model, NULL);
+        return;
+    }
+    int8_t label = mnist_load_label(MOUNT_POINT"/t10k-labels-idx1-ubyte", img_index);
+    if (label < 0) {
+        printf("Failed to load test label\n");
+        free(img);
+        tsetlin__free_unpacked(model, NULL);
+        return;
+    }
+    printf("Evaluating model on test image %d (label %d)\n", img_index, label);
+
+    mnist_print_img(img);
+
+    int32_t votes[model->n_class];
+    memset(votes, 0, sizeof(votes));
+
+    for (size_t i = 0; i < model->n_class; i++)
+    {
+        for (size_t j = 0; j <(size_t) model->n_clause / 2; j++)
+        {
+            ClauseCompressed* p_clause = model->clauses_compressed[i * model->n_clause + j * 2];
+            ClauseCompressed* n_clause = model->clauses_compressed[i * model->n_clause + j * 2 + 1];
+            
+            votes[i] += clause_evaluate(p_clause, img, model->n_state, model->n_feature);
+            votes[i] -= clause_evaluate(n_clause, img, model->n_state, model->n_feature);
+        }
+    }
+
+    // Print votes for each class
+    for (size_t i = 0; i < model->n_class; i++)
+    {
+        printf("Class %u: %ld votes\n", i, votes[i]);
+    }
+
+    // Find predicted class
+    uint8_t predicted_class = 0;
+    int32_t max_votes = votes[0];
+    for (size_t i = 1; i < model->n_class; i++)
+    {
+        if (votes[i] > max_votes)
+        {
+            max_votes = votes[i];
+            predicted_class = i;
+        }
+    }
+    
+    printf("Predicted class: %d with %ld votes\n", predicted_class, max_votes);
+    free(img);
+
+    // Evaluate on the entire test set
+    int correct = 0;
+    uint32_t num_test = 10000;
+
+    long total_utility_time = 0;
+    long total_calc_time = 0;
+
+    for (uint32_t i = 0; i < num_test; i++)
+    {
+        TickType_t start_utility = xTaskGetTickCount();
+        uint8_t* img = mnist_load_image(MOUNT_POINT"/t10k-images-idx3-ubyte", i, rows, cols);
+        if (!img) {
+            printf("Failed to load test image %ld\n", i);
+            continue;
+        }
+        int8_t label = mnist_load_label(MOUNT_POINT"/t10k-labels-idx1-ubyte", i);
+        if (label < 0) {
+            printf("Failed to load test label %ld\n", i);
+            free(img);
+            continue;
+        }
+
+        memset(votes, 0, sizeof(votes));
+        total_utility_time += (xTaskGetTickCount() - start_utility);
+
+        TickType_t start = xTaskGetTickCount();
+        for (size_t c = 0; c < model->n_class; c++)
+        {
+            for (size_t j = 0; j <(size_t) model->n_clause / 2; j++)
+            {
+                ClauseCompressed* p_clause = model->clauses_compressed[c * model->n_clause + j * 2];
+                ClauseCompressed* n_clause = model->clauses_compressed[c * model->n_clause + j * 2 + 1];
+                
+                votes[c] += clause_evaluate(p_clause, img, model->n_state, model->n_feature);
+                votes[c] -= clause_evaluate(n_clause, img, model->n_state, model->n_feature);
+            }
+        }
+
+        // Find predicted class
+        uint8_t predicted_class = 0;
+        int32_t max_votes = votes[0];
+        for (size_t c = 1; c < model->n_class; c++)
+        {
+            if (votes[c] > max_votes)
+            {
+                max_votes = votes[c];
+                predicted_class = c;
+            }
+        }
+
+        if (predicted_class == label) {
+            correct++;
+        }
+
+        total_calc_time += (xTaskGetTickCount() - start);
+
+        free(img);
+        
+        // Print progress every 100 images
+        if ((i + 1) % 100 == 0) {
+            printf("Processed %ld/%ld test images\n", i + 1, num_test);
+        }
+    }
+
+    float tks = num_test / (double)(total_calc_time) * 1000;
+    printf("[TM] Achieved images/s: %f\n", tks / portTICK_PERIOD_MS);
+
+    float uts = num_test / (double)(total_utility_time) * 1000;
+    printf("[UM] Achieved images/s: %f\n", uts / portTICK_PERIOD_MS);
+
+    printf("Accuracy on test set (%ld): %.2f%%\n", num_test, (double)correct / num_test * 100);
+
+    // free protobuf
+    tsetlin__free_unpacked(model, NULL);
 
     sdcard_deinit(card);
 }
