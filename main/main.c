@@ -6,73 +6,21 @@
 #include "sdcard.h"
 #include "mnist.h"
 
+#include "tsetlin.h"
+#include "clause.h"
 #include "tsetlin.pb-c.h"
-
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
 static const char *TAG = "main";
 
-uint8_t* read_file(const char* path, size_t* out_size) {
-    FILE* f = fopen(path, "rb");
-    if (!f) return NULL;
-
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    uint8_t* buffer = malloc(size);
-    if (!buffer) {
-        fclose(f);
-        return NULL;
-    }
-
-    fread(buffer, 1, size, f);
-    fclose(f);
-
-    *out_size = size;
-    return buffer;
-}
-
-uint8_t clause_evaluate(ClauseCompressed* clause, uint8_t* input, uint32_t n_state, uint32_t n_feature) {
-    for (size_t k = 0; k < clause->n_pos_literal; k++)
-    {
-        uint32_t idx_literal = clause->position[k];
-        if (clause->data[k] > n_state / 2)
-        {
-            // positive literal is included
-            if (input[idx_literal] <= 75)
-            {
-                return 0; // Clause evaluates to false
-            }
-        }
-    }
-
-    for (size_t k = 0; k < clause->n_neg_literal; k++)
-    {
-        uint32_t idx_literal = clause->position[clause->n_pos_literal + k];
-        if (clause->data[clause->n_pos_literal + k] > n_state / 2)
-        {
-            // negative literal is included
-            if (input[idx_literal] > 75)
-            {
-                return 0; // Clause evaluates to false
-            }
-        }
-    }
-
-    return 1; // Clause evaluates to true
-}
-
 void app_main(void)
 {
     // Initialize SD card and mount FAT filesystem
     sdmmc_card_t *card = sdcard_init();
 
-    // list_recursive(MOUNT_POINT);
-
-    // Use POSIX and C standard library functions to work with files.
+    // Get training set info
     int rows, cols;
     uint32_t train_img_count = mnist_image_info(MOUNT_POINT"/train-images-idx3-ubyte", &rows, &cols);
     ESP_LOGI(TAG, "MNIST training set: %d images of size %dx%d", train_img_count, rows, cols);
@@ -83,6 +31,7 @@ void app_main(void)
         ESP_LOGE(TAG, "Image count and label count do not match!");
     }
 
+    // Get test set info
     uint32_t test_img_count = mnist_image_info(MOUNT_POINT"/t10k-images-idx3-ubyte", &rows, &cols);
     ESP_LOGI(TAG, "MNIST test set: %d images of size %dx%d", test_img_count, rows, cols);
 
@@ -92,11 +41,10 @@ void app_main(void)
         ESP_LOGE(TAG, "Image count and label count do not match!");
     }
 
-    // Get a random image index to load and print
+    // Print mnist train image
     int img_index = esp_random() % train_img_count;
     ESP_LOGI(TAG, "Loading and printing training image %d", img_index);
 
-    // Print mnist train image
     FILE* f_train_imgs = fopen(MOUNT_POINT"/train-images-idx3-ubyte", "r");
     if (!f_train_imgs) {
         ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/train-images-idx3-ubyte");
@@ -141,8 +89,9 @@ void app_main(void)
         free(test_img);
     }
 
+    // Load Tsetlin model from file
     size_t size = 0;
-    uint8_t* data = read_file(MOUNT_POINT"/tsetlin_model.cpb", &size);
+    uint8_t* data = tsetlin_read_file(MOUNT_POINT"/tsetlin_model.cpb", &size);
     if (!data) {
         printf("Failed to read file\n");
         return;
@@ -179,49 +128,26 @@ void app_main(void)
         tsetlin__free_unpacked(model, NULL);
         return;
     }
-    printf("Evaluating model on test image %d (label %d)\n", img_index, label);
 
+    printf("Evaluating model on test image %d (label %d)\n", img_index, label);
     mnist_print_img(img);
 
     int32_t votes[model->n_class];
-    memset(votes, 0, sizeof(votes));
-
-    for (size_t i = 0; i < model->n_class; i++)
-    {
-        for (size_t j = 0; j <(size_t) model->n_clause / 2; j++)
-        {
-            ClauseCompressed* p_clause = model->clauses_compressed[i * model->n_clause + j * 2];
-            ClauseCompressed* n_clause = model->clauses_compressed[i * model->n_clause + j * 2 + 1];
-            
-            votes[i] += clause_evaluate(p_clause, img, model->n_state, model->n_feature);
-            votes[i] -= clause_evaluate(n_clause, img, model->n_state, model->n_feature);
-        }
-    }
-
-    // Print votes for each class
-    for (size_t i = 0; i < model->n_class; i++)
-    {
-        printf("Class %u: %ld votes\n", i, votes[i]);
-    }
-
-    // Find predicted class
     uint8_t predicted_class = 0;
-    int32_t max_votes = votes[0];
-    for (size_t i = 1; i < model->n_class; i++)
+
+    tsetlin_evaluate(model, img, votes, &predicted_class);
+
+    printf("Predicted class: %d with %ld votes\n", predicted_class, votes[predicted_class]);
+    for (size_t i = 0; i < model->n_class; i++)
     {
-        if (votes[i] > max_votes)
-        {
-            max_votes = votes[i];
-            predicted_class = i;
-        }
+        printf("Class %d: %ld votes\n", i, votes[i]);
     }
-    
-    printf("Predicted class: %d with %ld votes\n", predicted_class, max_votes);
+
     free(img);
 
     // Evaluate on the entire test set
     int correct = 0;
-    uint32_t num_test = 10000;
+    uint32_t num_test = test_img_count;
 
     long total_utility_time = 0;
     long total_calc_time = 0;
@@ -229,11 +155,13 @@ void app_main(void)
     for (uint32_t i = 0; i < num_test; i++)
     {
         TickType_t start_utility = xTaskGetTickCount();
+
         uint8_t* img = mnist_load_image(f_test_imgs, i, rows, cols);
         if (!img) {
             printf("Failed to load test image %ld\n", i);
             continue;
         }
+
         int8_t label = mnist_load_label(f_test_labels, i);
         if (label < 0) {
             printf("Failed to load test label %ld\n", i);
@@ -241,33 +169,11 @@ void app_main(void)
             continue;
         }
 
-        memset(votes, 0, sizeof(votes));
         total_utility_time += (xTaskGetTickCount() - start_utility);
 
         TickType_t start = xTaskGetTickCount();
-        for (size_t c = 0; c < model->n_class; c++)
-        {
-            for (size_t j = 0; j <(size_t) model->n_clause / 2; j++)
-            {
-                ClauseCompressed* p_clause = model->clauses_compressed[c * model->n_clause + j * 2];
-                ClauseCompressed* n_clause = model->clauses_compressed[c * model->n_clause + j * 2 + 1];
-                
-                votes[c] += clause_evaluate(p_clause, img, model->n_state, model->n_feature);
-                votes[c] -= clause_evaluate(n_clause, img, model->n_state, model->n_feature);
-            }
-        }
 
-        // Find predicted class
-        uint8_t predicted_class = 0;
-        int32_t max_votes = votes[0];
-        for (size_t c = 1; c < model->n_class; c++)
-        {
-            if (votes[c] > max_votes)
-            {
-                max_votes = votes[c];
-                predicted_class = c;
-            }
-        }
+        tsetlin_evaluate(model, img, votes, &predicted_class);
 
         if (predicted_class == label) {
             correct++;
