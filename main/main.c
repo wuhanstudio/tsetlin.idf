@@ -97,10 +97,22 @@ void app_main(void)
     ESP_LOGI(TAG, "Loading and printing training image %d", img_index);
 
     // Print mnist train image
-    uint8_t* train_img = mnist_load_image(MOUNT_POINT"/train-images-idx3-ubyte", img_index, rows, cols);
+    FILE* f_train_imgs = fopen(MOUNT_POINT"/train-images-idx3-ubyte", "r");
+    if (!f_train_imgs) {
+        ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/train-images-idx3-ubyte");
+        return;
+    }
+
+    FILE *f_train_labels = fopen(MOUNT_POINT"/train-labels-idx1-ubyte", "r");
+    if (!f_train_labels) {
+        ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/train-labels-idx1-ubyte");
+        return;
+    }
+
+    uint8_t* train_img = mnist_load_image(f_train_imgs, img_index, rows, cols);
     if (train_img) {
         mnist_print_img(train_img);
-        int8_t train_label = mnist_load_label(MOUNT_POINT"/train-labels-idx1-ubyte", img_index);
+        int8_t train_label = mnist_load_label(f_train_labels, img_index);
         ESP_LOGI(TAG, "Training image label: %d", train_label);
         free(train_img);
     } 
@@ -108,10 +120,23 @@ void app_main(void)
     // Print mnist test image
     img_index = esp_random() % test_img_count;
     ESP_LOGI(TAG, "Loading and printing testing image %d", img_index);
-    uint8_t* test_img = mnist_load_image(MOUNT_POINT"/t10k-images-idx3-ubyte", img_index, rows, cols);
+
+    FILE* f_test_imgs = fopen(MOUNT_POINT"/t10k-images-idx3-ubyte", "r");
+    if (!f_test_imgs) {
+        ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/t10k-images-idx3-ubyte");
+        return;
+    }
+
+    FILE* f_test_labels = fopen(MOUNT_POINT"/t10k-labels-idx1-ubyte", "r");
+    if (!f_test_labels) {
+        ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/t10k-labels-idx1-ubyte");
+        return;
+    }
+
+    uint8_t* test_img = mnist_load_image(f_test_imgs, img_index, rows, cols);
     if (test_img) {
         mnist_print_img(test_img);
-        int8_t test_label = mnist_load_label(MOUNT_POINT"/t10k-labels-idx1-ubyte", img_index);
+        int8_t test_label = mnist_load_label(f_test_labels, img_index);
         ESP_LOGI(TAG, "Testing image label: %d", test_label);
         free(test_img);
     }
@@ -139,13 +164,15 @@ void app_main(void)
 
     // Evaluate model on a random test image
     img_index = esp_random() % test_img_count;
-    uint8_t* img = mnist_load_image(MOUNT_POINT"/t10k-images-idx3-ubyte", img_index, rows, cols);
+
+    uint8_t* img = mnist_load_image(f_test_imgs, img_index, rows, cols);
     if (!img) {
         printf("Failed to load test image\n");
         tsetlin__free_unpacked(model, NULL);
         return;
     }
-    int8_t label = mnist_load_label(MOUNT_POINT"/t10k-labels-idx1-ubyte", img_index);
+
+    int8_t label = mnist_load_label(f_test_labels, img_index);
     if (label < 0) {
         printf("Failed to load test label\n");
         free(img);
@@ -202,12 +229,12 @@ void app_main(void)
     for (uint32_t i = 0; i < num_test; i++)
     {
         TickType_t start_utility = xTaskGetTickCount();
-        uint8_t* img = mnist_load_image(MOUNT_POINT"/t10k-images-idx3-ubyte", i, rows, cols);
+        uint8_t* img = mnist_load_image(f_test_imgs, i, rows, cols);
         if (!img) {
             printf("Failed to load test image %ld\n", i);
             continue;
         }
-        int8_t label = mnist_load_label(MOUNT_POINT"/t10k-labels-idx1-ubyte", i);
+        int8_t label = mnist_load_label(f_test_labels, i);
         if (label < 0) {
             printf("Failed to load test label %ld\n", i);
             free(img);
@@ -266,6 +293,12 @@ void app_main(void)
 
     // free protobuf
     tsetlin__free_unpacked(model, NULL);
+
+    fclose(f_train_imgs);
+    fclose(f_test_imgs);
+
+    fclose(f_train_labels);
+    fclose(f_test_labels);
 
     sdcard_deinit(card);
 }

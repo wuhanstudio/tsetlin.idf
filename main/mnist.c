@@ -44,17 +44,13 @@ uint32_t mnist_image_info(const char* path, int* out_rows, int* out_cols) {
     return num_images;
 }
 
-uint8_t* mnist_load_image(const char* path, int idx, int rows, int cols) {
-    FILE* f = fopen(path, "r");
-    if (!f) {
-        ESP_LOGE(TAG, "Failed to open file %s", path);
-        return NULL;
-    }
-
+uint8_t* mnist_load_image(FILE* f, int idx, int rows, int cols) {
     uint8_t header[16];
+    fseek(f, 0, SEEK_SET);
+
     if (fread(header, 1, 16, f) != 16) { 
         fclose(f); 
-        ESP_LOGE(TAG, "Failed to read header from file %s", path);
+        ESP_LOGE(TAG, "Failed to read header from file");
         return NULL; 
     }
 
@@ -62,7 +58,7 @@ uint8_t* mnist_load_image(const char* path, int idx, int rows, int cols) {
 
     if (magic != 0x00000803) { 
         fclose(f); 
-        ESP_LOGE(TAG, "Invalid magic number in file %s", path);
+        ESP_LOGE(TAG, "Invalid magic number in file");
         return NULL; 
     }
 
@@ -72,8 +68,6 @@ uint8_t* mnist_load_image(const char* path, int idx, int rows, int cols) {
 
     fseek(f, 16 + (size_t)idx * total, SEEK_SET);
     if (fread(buf, 1, total, f) != total) { free(buf); fclose(f); return NULL; }
-
-    fclose(f);
 
     return buf;
 }
@@ -106,17 +100,13 @@ uint32_t mnist_label_info(const char* path) {
     return num_labels;
 }
 
-int8_t mnist_load_label(const char* path, int idx) {
-    FILE* f = fopen(path, "r");
-    if (!f) {
-        ESP_LOGE(TAG, "Failed to open file %s", path);
-        return -1;
-    }
-
+int8_t mnist_load_label(FILE* f, int idx) {
     uint8_t header[8];
+    fseek(f, 0, SEEK_SET);
+
     if (fread(header, 1, 8, f) != 8) { 
         fclose(f); 
-        ESP_LOGE(TAG, "Failed to read header from file %s", path);
+        ESP_LOGE(TAG, "Failed to read header from file");
         return -1; 
     }
 
@@ -124,15 +114,13 @@ int8_t mnist_load_label(const char* path, int idx) {
 
     if (magic != 0x00000801) { 
         fclose(f); 
-        ESP_LOGE(TAG, "Invalid magic number in file %s", path);
+        ESP_LOGE(TAG, "Invalid magic number in file");
         return -1; 
     }
 
     fseek(f, 8 + (size_t)idx, SEEK_SET);
     uint8_t label;
     if (fread(&label, 1, 1, f) != 1) { fclose(f); return 0; }
-
-    fclose(f);
 
     return label;
 }
