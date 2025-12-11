@@ -8,3 +8,5 @@ uint32_t mnist_label_info(const char* path);
 int8_t mnist_load_label(FILE* f, int idx);
 
 void mnist_print_img(const uint8_t* buf);
+
+void mnist_booleanize_img(uint8_t* img, uint32_t size, uint8_t threshold);

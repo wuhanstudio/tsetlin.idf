@@ -135,6 +135,7 @@ void app_main(void)
     int32_t votes[model->n_class];
     uint8_t predicted_class = 0;
 
+    mnist_booleanize_img(img, rows * cols, 75);
     tsetlin_evaluate(model, img, votes, &predicted_class);
 
     printf("Predicted class: %d with %ld votes\n", predicted_class, votes[predicted_class]);
@@ -173,6 +174,7 @@ void app_main(void)
 
         TickType_t start = xTaskGetTickCount();
 
+        mnist_booleanize_img(img, rows * cols, 75);
         tsetlin_evaluate(model, img, votes, &predicted_class);
 
         if (predicted_class == label) {
@@ -196,6 +198,67 @@ void app_main(void)
     printf("[UM] Achieved images/s: %f\n", uts / portTICK_PERIOD_MS);
 
     printf("Accuracy on test set (%ld): %.2f%%\n", num_test, (double)correct / num_test * 100);
+
+    uint32_t N_EPOCHS = 10;
+    uint32_t T = 20;
+    float s = 5.0f;
+    
+    uint32_t num_train = 6000;
+    for (size_t i = 0; i < N_EPOCHS; i++)
+    {
+        for (uint32_t j = 0; j < num_train; j++)
+        {
+            uint8_t* X_img = mnist_load_image(f_test_imgs, j, rows, cols);
+            if (!X_img) {
+                printf("Failed to load test image %ld\n", j);
+                continue;
+            }
+
+            int8_t y_target = mnist_load_label(f_test_labels, j);
+            if (y_target < 0) {
+                printf("Failed to load test label %ld\n", j);
+                continue;
+            }
+
+            mnist_booleanize_img(X_img, rows * cols, 75);
+            tsetlin_step(model, X_img, y_target, T, s);
+            free(X_img);
+
+            // Print progress every 1000 images
+            if ((j + 1) % 1000 == 0) {
+                printf("Epoch %d: Processed %ld/%ld training images\n", i + 1, j + 1, num_train);
+            }
+        }
+
+        // Evaluate on test set after each epoch
+        correct = 0;
+        num_test = 1000;
+        for (uint32_t j = 0; j < num_test; j++)
+        {
+            uint8_t* img = mnist_load_image(f_test_imgs, j, rows, cols);
+            if (!img) {
+                printf("Failed to load test image %ld\n", j);
+                continue;
+            }
+
+            int8_t label = mnist_load_label(f_test_labels, j);
+            if (label < 0) {
+                printf("Failed to load test label %ld\n", j);
+                free(img);
+                continue;
+            }
+
+            mnist_booleanize_img(img, rows * cols, 75);
+            tsetlin_evaluate(model, img, votes, &predicted_class);
+
+            if (predicted_class == label) {
+                correct++;
+            }
+
+            free(img);
+        }
+        printf("Accuracy after epoch %d: %.2f%%\n", i + 1, (double)correct / num_test * 100);
+    }
 
     // free protobuf
     tsetlin__free_unpacked(model, NULL);

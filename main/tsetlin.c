@@ -26,12 +26,103 @@ uint8_t* tsetlin_read_file(const char* path, size_t* out_size) {
     return buffer;
 }
 
+void tsetlin_step(Tsetlin* model, uint8_t* X_img, int8_t y_target, uint32_t T, float s) {
+    // Pair 1: Target class
+    int32_t class_sum = 0;
+    
+    int8_t pos_clauses_eval[model->n_clause / 2];
+    memset(pos_clauses_eval, 0, sizeof(pos_clauses_eval));
+
+    int8_t neg_clauses_eval[model->n_clause / 2];
+    memset(neg_clauses_eval, 0, sizeof(neg_clauses_eval));
+
+    for (size_t i = 0; i <(size_t) model->n_clause / 2; i++)
+    {
+        ClauseCompressed* p_clause = model->clauses_compressed[y_target * model->n_clause + i * 2];
+        ClauseCompressed* n_clause = model->clauses_compressed[y_target * model->n_clause + i * 2 + 1];
+
+        pos_clauses_eval[i] = clause_evaluate(p_clause, X_img, model->n_state, model->n_feature);
+        neg_clauses_eval[i] = clause_evaluate(n_clause, X_img, model->n_state, model->n_feature);
+
+        class_sum += pos_clauses_eval[i];
+        class_sum -= neg_clauses_eval[i];
+    }
+
+    // Clamp class_sum to [-T, T]
+    if (class_sum > (int32_t)T) {
+        class_sum = T;
+    } else if (class_sum < -(int32_t)T) {
+        class_sum = -T;
+    }
+
+    // Calculate probabilities
+    float c1 = (T - class_sum) / (2 * T);
+
+    // Update clauses for the target class
+    for (size_t i = 0; i <(size_t) model->n_clause / 2; i++) {
+        ClauseCompressed* p_clause = model->clauses_compressed[y_target * model->n_clause + i * 2];
+        ClauseCompressed* n_clause = model->clauses_compressed[y_target * model->n_clause + i * 2 + 1];
+
+        // Positive Clause: Type I Feedback
+        if (random_float_01() <= c1)
+            clause_update_type_I(p_clause, X_img, pos_clauses_eval[i], model->n_state, model->n_feature, s);
+
+        // Negative Clause: Type II Feedback
+        if (neg_clauses_eval[i] == 1 && (random_float_01() <= c1))
+            clause_update_type_II(n_clause, X_img, model->n_state, model->n_feature);
+    }
+
+    // Pair 2: Non-target classes
+    uint8_t other_class = y_target;
+    while (other_class == y_target) {
+        other_class = esp_random() % model->n_class;
+    }
+
+    class_sum = 0;
+    memset(pos_clauses_eval, 0, sizeof(pos_clauses_eval));
+    memset(neg_clauses_eval, 0, sizeof(neg_clauses_eval));
+    for (size_t i = 0; i <(size_t) model->n_clause / 2; i++)
+    {
+        ClauseCompressed* p_clause = model->clauses_compressed[other_class * model->n_clause + i * 2];
+        ClauseCompressed* n_clause = model->clauses_compressed[other_class * model->n_clause + i * 2 + 1];
+
+        pos_clauses_eval[i] = clause_evaluate(p_clause, X_img, model->n_state, model->n_feature);
+        neg_clauses_eval[i] = clause_evaluate(n_clause, X_img, model->n_state, model->n_feature);
+
+        class_sum += pos_clauses_eval[i];
+        class_sum -= neg_clauses_eval[i];
+    }
+
+    // Clamp class_sum to [-T, T]
+    if (class_sum > (int32_t)T) {
+        class_sum = T;
+    } else if (class_sum < -(int32_t)T) {
+        class_sum = -T;
+    }
+
+    float c2 = (T + class_sum) / (2 * T);
+    for( size_t i = 0; i <(size_t) model->n_clause / 2; i++) {
+        ClauseCompressed* p_clause = model->clauses_compressed[other_class * model->n_clause + i * 2];
+        ClauseCompressed* n_clause = model->clauses_compressed[other_class * model->n_clause + i * 2 + 1];
+
+        // Positive Clause: Type II Feedback
+        if (pos_clauses_eval[i] == 1 && (random_float_01() <= c2)) {
+            clause_update_type_II(p_clause, X_img, model->n_state, model->n_feature);
+        }
+
+        // Negative Clause: Type I Feedback
+        if (neg_clauses_eval[i] == 1 && (random_float_01() <= c2)) {
+            clause_update_type_I(n_clause, X_img, neg_clauses_eval[i], model->n_state, model->n_feature, s);
+        }
+    }
+}
+
 int tsetlin_evaluate(Tsetlin* model, uint8_t* input, int32_t *out_votes, uint8_t* out_class) {
     memset(out_votes, 0, model->n_class * sizeof(int32_t));
 
     for (size_t c = 0; c < model->n_class; c++)
     {
-        for (size_t j = 0; j <(size_t) model->n_clause / 2; j++)
+        for (uint32_t j = 0; j <(size_t) model->n_clause / 2; j++)
         {
             ClauseCompressed* p_clause = model->clauses_compressed[c * model->n_clause + j * 2];
             ClauseCompressed* n_clause = model->clauses_compressed[c * model->n_clause + j * 2 + 1];

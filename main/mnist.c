@@ -11,6 +11,12 @@ static uint32_t read_u32_be(const uint8_t *p) {
            (uint32_t)p[3];
 }
 
+void mnist_booleanize_img(uint8_t* img, uint32_t size, uint8_t threshold) {
+    for (uint32_t i = 0; i < size; i++) {
+        img[i] = (img[i] > threshold) ? 1 : 0;
+    }
+}
+
 uint32_t mnist_image_info(const char* path, int* out_rows, int* out_cols) {
     FILE* f = fopen(path, "r");
     if (!f) {
