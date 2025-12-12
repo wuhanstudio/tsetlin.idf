@@ -51,28 +51,22 @@ uint32_t mnist_image_info(const char* path, int* out_rows, int* out_cols) {
 }
 
 uint8_t* mnist_load_image(FILE* f, int idx, int rows, int cols) {
-    uint8_t header[16];
-    fseek(f, 0, SEEK_SET);
-
-    if (fread(header, 1, 16, f) != 16) { 
-        fclose(f); 
-        ESP_LOGE(TAG, "Failed to read header from file");
-        return NULL; 
-    }
-
-    uint32_t magic      = read_u32_be(&header[0]);
-
-    if (magic != 0x00000803) { 
-        fclose(f); 
-        ESP_LOGE(TAG, "Invalid magic number in file");
-        return NULL; 
-    }
-
     size_t total = (size_t)rows * cols;
     uint8_t* buf = (uint8_t*)malloc(total);
     if (!buf) { fclose(f); return NULL; }
 
     fseek(f, 16 + (size_t)idx * total, SEEK_SET);
+
+    if (fread(buf, 1, total, f) != total) { free(buf); fclose(f); return NULL; }
+
+    return buf;
+}
+
+uint8_t* mnist_load_next_image(FILE* f, int idx, int rows, int cols) {
+    size_t total = (size_t)rows * cols;
+    uint8_t* buf = (uint8_t*)malloc(total);
+    if (!buf) { fclose(f); return NULL; }
+
     if (fread(buf, 1, total, f) != total) { free(buf); fclose(f); return NULL; }
 
     return buf;
@@ -107,24 +101,15 @@ uint32_t mnist_label_info(const char* path) {
 }
 
 int8_t mnist_load_label(FILE* f, int idx) {
-    uint8_t header[8];
-    fseek(f, 0, SEEK_SET);
-
-    if (fread(header, 1, 8, f) != 8) { 
-        fclose(f); 
-        ESP_LOGE(TAG, "Failed to read header from file");
-        return -1; 
-    }
-
-    uint32_t magic      = read_u32_be(&header[0]);
-
-    if (magic != 0x00000801) { 
-        fclose(f); 
-        ESP_LOGE(TAG, "Invalid magic number in file");
-        return -1; 
-    }
-
     fseek(f, 8 + (size_t)idx, SEEK_SET);
+
+    uint8_t label;
+    if (fread(&label, 1, 1, f) != 1) { fclose(f); return 0; }
+
+    return label;
+}
+
+int8_t mnist_load_next_label(FILE* f, int idx) {
     uint8_t label;
     if (fread(&label, 1, 1, f) != 1) { fclose(f); return 0; }
 

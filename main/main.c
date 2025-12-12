@@ -15,6 +15,19 @@
 
 static const char *TAG = "main";
 
+void print_progress(const char *label, int percent) {
+    const int bar_width = 40;
+    int filled = percent * bar_width / 100;
+
+    printf("%s [", label);
+    for (int i = 0; i < bar_width; i++) {
+        if (i < filled) printf("=");
+        else printf(" ");
+    }
+    printf("] %3d%%\r", percent);  // stay on same line
+    fflush(stdout);
+}
+
 void app_main(void)
 {
     // Initialize SD card and mount FAT filesystem
@@ -91,7 +104,7 @@ void app_main(void)
 
     // Load Tsetlin model from file
     size_t size = 0;
-    uint8_t* data = tsetlin_read_file(MOUNT_POINT"/tsetlin_model.cpb", &size);
+    uint8_t* data = tsetlin_read_file(MOUNT_POINT"/tsetlin_model_150_50.cpb", &size);
     if (!data) {
         printf("Failed to read file\n");
         return;
@@ -148,75 +161,99 @@ void app_main(void)
 
     // Evaluate on the entire test set
     int correct = 0;
-    uint32_t num_test = test_img_count;
+    if (1) {
 
-    long total_utility_time = 0;
-    long total_calc_time = 0;
+        long total_utility_time = 0;
+        long total_calc_time = 0;
 
-    for (uint32_t i = 0; i < num_test; i++)
-    {
-        TickType_t start_utility = xTaskGetTickCount();
-
-        uint8_t* img = mnist_load_image(f_test_imgs, i, rows, cols);
-        if (!img) {
-            printf("Failed to load test image %ld\n", i);
-            continue;
-        }
-
-        int8_t label = mnist_load_label(f_test_labels, i);
-        if (label < 0) {
-            printf("Failed to load test label %ld\n", i);
-            free(img);
-            continue;
-        }
-
-        total_utility_time += (xTaskGetTickCount() - start_utility);
-
-        TickType_t start = xTaskGetTickCount();
-
-        mnist_booleanize_img(img, rows * cols, 75);
-        tsetlin_evaluate(model, img, votes, &predicted_class);
-
-        if (predicted_class == label) {
-            correct++;
-        }
-
-        total_calc_time += (xTaskGetTickCount() - start);
-
-        free(img);
-        
-        // Print progress every 100 images
-        if ((i + 1) % 100 == 0) {
-            printf("Processed %ld/%ld test images\n", i + 1, num_test);
-        }
-    }
-
-    float tks = num_test / (double)(total_calc_time) * 1000;
-    printf("[TM] Achieved images/s: %f\n", tks / portTICK_PERIOD_MS);
-
-    float uts = num_test / (double)(total_utility_time) * 1000;
-    printf("[UM] Achieved images/s: %f\n", uts / portTICK_PERIOD_MS);
-
-    printf("Accuracy on test set (%ld): %.2f%%\n", num_test, (double)correct / num_test * 100);
-
-    uint32_t N_EPOCHS = 10;
-    uint32_t T = 20;
-    float s = 5.0f;
-    
-    uint32_t num_train = 6000;
-    for (size_t i = 0; i < N_EPOCHS; i++)
-    {
-        for (uint32_t j = 0; j < num_train; j++)
+        for (uint32_t i = 0; i < test_img_count; i++)
         {
-            uint8_t* X_img = mnist_load_image(f_test_imgs, j, rows, cols);
-            if (!X_img) {
-                printf("Failed to load test image %ld\n", j);
+            TickType_t start_utility = xTaskGetTickCount();
+
+            if( i == 0) {
+                // Skip the header
+                fseek(f_test_imgs, 16, SEEK_SET);
+                fseek(f_test_labels, 8, SEEK_SET);
+            }
+
+            uint8_t* img = mnist_load_next_image(f_test_imgs, i, rows, cols);
+            if (!img) {
+                printf("Failed to load test image %ld\n", i);
                 continue;
             }
 
-            int8_t y_target = mnist_load_label(f_test_labels, j);
+            int8_t label = mnist_load_next_label(f_test_labels, i);
+            if (label < 0) {
+                printf("Failed to load test label %ld\n", i);
+                free(img);
+                continue;
+            }
+
+            total_utility_time += (xTaskGetTickCount() - start_utility);
+
+            TickType_t start = xTaskGetTickCount();
+
+            mnist_booleanize_img(img, rows * cols, 75);
+            tsetlin_evaluate(model, img, votes, &predicted_class);
+
+            if (predicted_class == label) {
+                correct++;
+            }
+
+            total_calc_time += (xTaskGetTickCount() - start);
+
+            free(img);
+            
+            // Print progress every 1000 images
+            if ((i + 1) % 1000 == 0) {
+                char message[32];
+                snprintf(message, sizeof(message), "Testing %ld/%ld", i + 1, test_img_count);
+                print_progress(message, (i + 1) * 100 / test_img_count);
+                // printf("Processed %ld/%ld test images\n", i + 1, test_img_count);
+            }
+        }
+        printf("\n");
+
+        float tks = test_img_count / (double)(total_calc_time) * 1000;
+        printf("[TM] Achieved images/s: %f\n", tks / portTICK_PERIOD_MS);
+
+        float uts = test_img_count / (double)(total_utility_time) * 1000;
+        printf("[UM] Achieved images/s: %f\n", uts / portTICK_PERIOD_MS);
+
+        printf("Accuracy on test set (%ld): %.2f%%\n", test_img_count, (double)correct / test_img_count * 100);
+    }
+
+    // Test the random number generator speed
+    const uint32_t N_RAND = 10;
+    for (uint32_t i = 0; i < N_RAND; i++)
+    {
+        float r = random_float_01();
+        printf("Random float %ld: %f\n", i, r);
+    }
+
+    // Train the model on the training set
+    uint32_t N_EPOCHS = 10;
+    uint32_t T = 10;
+    float s = 7.5f;
+    
+    for (size_t i = 0; i < N_EPOCHS; i++)
+    {
+        for (uint32_t j = 0; j < train_img_count; j++)
+        {
+            if( j == 0) {
+                fseek(f_train_imgs, 16, SEEK_SET);
+                fseek(f_train_labels, 8, SEEK_SET);
+            }
+
+            uint8_t* X_img = mnist_load_next_image(f_train_imgs, j, rows, cols);
+            if (!X_img) {
+                printf("Failed to load train image %ld\n", j);
+                continue;
+            }
+
+            int8_t y_target = mnist_load_next_label(f_train_labels, j);
             if (y_target < 0) {
-                printf("Failed to load test label %ld\n", j);
+                printf("Failed to load train label %ld\n", j);
                 continue;
             }
 
@@ -226,22 +263,32 @@ void app_main(void)
 
             // Print progress every 1000 images
             if ((j + 1) % 1000 == 0) {
-                printf("Epoch %d: Processed %ld/%ld training images\n", i + 1, j + 1, num_train);
+                char message[32];
+                snprintf(message, sizeof(message), "Epoch %d: Processed %ld/%ld", i + 1, j + 1, train_img_count);
+                print_progress(message, (j + 1) * 100 / train_img_count);
+                // printf("Epoch %d: Processed %ld/%ld training images\n", i + 1, j + 1, train_img_count);
             }
         }
 
+        printf("\n");
+
         // Evaluate on test set after each epoch
         correct = 0;
-        num_test = 1000;
-        for (uint32_t j = 0; j < num_test; j++)
+        for (uint32_t j = 0; j < test_img_count; j++)
         {
-            uint8_t* img = mnist_load_image(f_test_imgs, j, rows, cols);
+            if( j == 0) {
+                // Skip the header
+                fseek(f_test_imgs, 16, SEEK_SET);
+                fseek(f_test_labels, 8, SEEK_SET);
+            }
+
+            uint8_t* img = mnist_load_next_image(f_test_imgs, j, rows, cols);
             if (!img) {
                 printf("Failed to load test image %ld\n", j);
                 continue;
             }
 
-            int8_t label = mnist_load_label(f_test_labels, j);
+            int8_t label = mnist_load_next_label(f_test_labels, j);
             if (label < 0) {
                 printf("Failed to load test label %ld\n", j);
                 free(img);
@@ -256,8 +303,17 @@ void app_main(void)
             }
 
             free(img);
+
+            // Print progress every 1000 images
+            if ((j + 1) % 1000 == 0) {
+                char message[32];
+                snprintf(message, sizeof(message), "Testing %ld/%ld", j + 1, test_img_count);
+                print_progress(message, (j + 1) * 100 / test_img_count);
+                // printf("Processed %ld/%ld test images\n", j + 1, test_img_count);
+            }
         }
-        printf("Accuracy after epoch %d: %.2f%%\n", i + 1, (double)correct / num_test * 100);
+        printf("\n");
+        printf("Testing Accuracy after epoch %d: %.2f%%\n", i + 1, (double)correct / test_img_count * 100);
     }
 
     // free protobuf
