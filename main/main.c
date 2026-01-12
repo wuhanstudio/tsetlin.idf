@@ -104,7 +104,7 @@ void app_main(void)
 
     // Load Tsetlin model from file
     size_t size = 0;
-    uint8_t* data = tsetlin_read_file(MOUNT_POINT"/tsetlin_model_150_50.cpb", &size);
+    uint8_t* data = tsetlin_read_file(MOUNT_POINT"/tsetlin_model.cpb", &size);
     if (!data) {
         printf("Failed to read file\n");
         return;
