@@ -42,6 +42,7 @@ void app_main(void)
     ESP_LOGI(TAG, "MNIST training set: %d labels", train_label_count);
     if (train_img_count != train_label_count) {
         ESP_LOGE(TAG, "Image count and label count do not match!");
+        return;
     }
 
     // Get test set info
@@ -52,6 +53,12 @@ void app_main(void)
     ESP_LOGI(TAG, "MNIST test set: %d labels", test_label_count);
     if (test_img_count != test_label_count) {
         ESP_LOGE(TAG, "Image count and label count do not match!");
+        return;
+    }
+
+    if (train_img_count == 0 || test_img_count == 0) {
+        ESP_LOGE(TAG, "No images found in dataset!");
+        return;
     }
 
     // Print mnist train image

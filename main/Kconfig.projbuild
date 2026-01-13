@@ -1,0 +1,26 @@
+menu "Board Selection"
+
+    choice EXAMPLE_SDMMC_BUS_WIDTH
+        prompt "Choose your board"
+        default ESP32_S3_CAM_BOARD
+        help
+            ESP32F_BOARD: No PSRAM, use SPI mode for SD card
+            ESP32_CAM_BOARD: With PSRAM, use SDIO mode for SD card
+            ESP32_S3_CAM_BOARD: ESP32-S3 with PSRAM, use SDIO mode for SD card
+
+        config ESP32F_BOARD
+            bool "ESP32F_BOARD"
+
+        config ESP32_CAM_BOARD
+            bool "ESP32_CAM_BOARD"
+            select SPIRAM
+            select SPIRAM_BOOT_INIT
+            select SPIRAM_IGNORE_NOTFOUND
+
+        config ESP32_S3_CAM_BOARD
+            bool "ESP32_S3_CAM_BOARD"
+            select SPIRAM
+            select SPIRAM_BOOT_INIT
+            select SPIRAM_IGNORE_NOTFOUND
+    endchoice
+endmenu

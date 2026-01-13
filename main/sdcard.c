@@ -100,13 +100,21 @@ sdmmc_card_t* sdcard_init() {
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
 
     // Set bus width to use:
+#ifdef SDMMC_BUS_WIDTH_4
+    slot_config.width = 4;
+#else
     slot_config.width = 1;
-
+#endif
     // On chips where the GPIOs used for SD card can be configured, set them in
     // the slot_config structure:
     slot_config.clk = PIN_SDIO_CLK;
     slot_config.cmd = PIN_SDIO_CMD;
     slot_config.d0 = PIN_SDIO_D0;
+#ifdef SDMMC_BUS_WIDTH_4
+    slot_config.d1 = PIN_SDIO_D1;
+    slot_config.d2 = PIN_SDIO_D2;
+    slot_config.d3 = PIN_SDIO_D3;
+#endif
 
     // Enable internal pullups on enabled pins. The internal pullups
     // are insufficient however, please make sure 10k external pullups are
