@@ -111,7 +111,7 @@ void app_main(void)
 
     // Load Tsetlin model from file
     size_t size = 0;
-    uint8_t* data = tsetlin_read_file(MOUNT_POINT"/tsetlin_model.cpb", &size);
+    uint8_t* data = tsetlin_read_file(MOUNT_POINT"/tsetlin_model_8_bit.cpb", &size);
     if (!data) {
         printf("Failed to read file\n");
         return;
@@ -155,8 +155,15 @@ void app_main(void)
     int32_t votes[model->n_class];
     uint8_t predicted_class = 0;
 
-    mnist_booleanize_img(img, rows * cols, 75);
-    tsetlin_evaluate(model, img, votes, &predicted_class);
+    // Booleanize image using threshold 75
+    // mnist_booleanize_img(img, rows * cols, 75);
+
+    // Booleanize image using 8-bit representation
+    uint8_t* bool_img = mnist_booleanize_img_n_bit(img, rows, cols, 8);
+    free(img);
+
+    // Evaluate
+    tsetlin_evaluate(model, bool_img, votes, &predicted_class);
 
     printf("Predicted class: %d with %ld votes\n", predicted_class, votes[predicted_class]);
     for (size_t i = 0; i < model->n_class; i++)
@@ -164,7 +171,7 @@ void app_main(void)
         printf("Class %d: %ld votes\n", i, votes[i]);
     }
 
-    free(img);
+    free(bool_img);
 
     // Evaluate on the entire test set
     int correct = 0;
@@ -200,16 +207,21 @@ void app_main(void)
 
             TickType_t start = xTaskGetTickCount();
 
-            mnist_booleanize_img(img, rows * cols, 75);
-            tsetlin_evaluate(model, img, votes, &predicted_class);
+            // Booleanize image using threshold 75
+            // mnist_booleanize_img(img, rows * cols, 75);
 
+            // Booleanize image using 8-bit representation
+            uint8_t* bool_img = mnist_booleanize_img_n_bit(img, rows, cols, 8);
+            free(img);
+
+            tsetlin_evaluate(model, bool_img, votes, &predicted_class);
             if (predicted_class == label) {
                 correct++;
             }
 
             total_calc_time += (xTaskGetTickCount() - start);
 
-            free(img);
+            free(bool_img);
             
             // Print progress every 1000 images
             if ((i + 1) % 1000 == 0) {
@@ -264,9 +276,15 @@ void app_main(void)
                 continue;
             }
 
-            mnist_booleanize_img(X_img, rows * cols, 75);
-            tsetlin_step(model, X_img, y_target, T, s);
+            // Booleanize image using threshold 75
+            // mnist_booleanize_img(X_img, rows * cols, 75);
+
+            // Booleanize image using 8-bit representation
+            uint8_t* bool_img = mnist_booleanize_img_n_bit(X_img, rows, cols, 8);
             free(X_img);
+
+            tsetlin_step(model, bool_img, y_target, T, s);
+            free(bool_img);
 
             // Print progress every 1000 images
             if ((j + 1) % 1000 == 0) {
@@ -302,14 +320,19 @@ void app_main(void)
                 continue;
             }
 
-            mnist_booleanize_img(img, rows * cols, 75);
-            tsetlin_evaluate(model, img, votes, &predicted_class);
+            // Booleanize image using threshold 75
+            // mnist_booleanize_img(img, rows * cols, 75);
 
+            // Booleanize image using 8-bit representation
+            uint8_t* bool_img = mnist_booleanize_img_n_bit(img, rows, cols, 8);
+            free(img);
+
+            tsetlin_evaluate(model, bool_img, votes, &predicted_class);
             if (predicted_class == label) {
                 correct++;
             }
 
-            free(img);
+            free(bool_img);
 
             // Print progress every 1000 images
             if ((j + 1) % 1000 == 0) {

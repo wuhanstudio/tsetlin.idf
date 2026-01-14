@@ -1,14 +1,96 @@
 #include "mnist.h"
-
+#include <math.h>
 #include <esp_vfs_fat.h>
 
 static const char *TAG = "mnist";
+
+#define MNIST_X_MEAN 33.318f
+#define MNIST_X_STD 78.567f
+
+static inline float norm_cdf(float x) {
+    return 0.5f * (1.0f + erff(x / 1.41421356237f)); // sqrt(2)
+}
 
 static uint32_t read_u32_be(const uint8_t *p) {
     return ((uint32_t)p[0] << 24) |
            ((uint32_t)p[1] << 16) |
            ((uint32_t)p[2] << 8)  |
            (uint32_t)p[3];
+}
+
+static float* mnist_int_to_float(uint8_t *src, int rows, int cols) {
+    float *dst = malloc(rows * cols * sizeof(float));
+
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            dst[i * cols + j] = (float) src[i * cols + j];
+        }
+    }
+    return dst;
+}
+
+static void misst_normalize_img(float* X, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            X[i * cols + j] = (X[i * cols + j] - MNIST_X_MEAN) / MNIST_X_STD;
+            X[i * cols + j] = norm_cdf(X[i * cols + j]);
+        }
+    }
+}
+
+static int mnist_booleanize_n_bit(float x, int num_bits, uint8_t *out_bits) {
+    if (x < 0.0f || x > 1.0f)
+        return -1;
+
+    if (!(num_bits == 1 || num_bits == 2 || num_bits == 4 || num_bits == 8))
+        return -2;
+
+    int max_val = (1 << num_bits) - 1;
+
+    /* round-to-nearest-even */
+    int int_val = (int) lrintf(x * max_val);
+
+    for (int i = 0; i < num_bits; i++) {
+        out_bits[i] = (int_val >> (num_bits - 1 - i)) & 1;
+    }
+
+    return 0;
+}
+
+static uint8_t* mnist_booleanize_features(
+    float* X,
+    int rows,
+    int cols,
+    int num_bits
+) {
+    int out_cols = cols * num_bits;
+
+    uint8_t* X_bool = malloc(rows * out_cols * sizeof(uint8_t));
+
+    int offset = 0;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            mnist_booleanize_n_bit(X[i * cols + j], num_bits, &X_bool[offset]);
+            offset += num_bits;
+        }
+    }
+    return X_bool;
+}
+
+uint8_t* mnist_booleanize_img_n_bit(
+    uint8_t* img,
+    int rows,
+    int cols,
+    int num_bits
+) {
+    // Booleanize image using 8-bit representation
+    float* float_img = mnist_int_to_float(img, rows, cols);
+    misst_normalize_img(float_img, rows, cols);
+
+    uint8_t* bool_img = mnist_booleanize_features(float_img, rows, cols, num_bits);
+    free(float_img);
+
+    return bool_img;
 }
 
 void mnist_booleanize_img(uint8_t* img, uint32_t size, uint8_t threshold) {

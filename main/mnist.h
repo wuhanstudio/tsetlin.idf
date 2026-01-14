@@ -11,4 +11,23 @@ int8_t mnist_load_next_label(FILE* f, int idx);
 
 void mnist_print_img(const uint8_t* buf);
 
+// Static functions used internally
+// float* mnist_int_to_float(uint8_t *src, int rows, int cols);
+// void misst_normalize_img(float *X, int rows, int cols);
+
+// int mnist_booleanize_n_bit(float x, int num_bits, uint8_t *out_bits);
+// uint8_t* mnist_booleanize_features(
+//     float* X,
+//     int rows,
+//     int cols,
+//     int num_bits
+// );
+
+uint8_t* mnist_booleanize_img_n_bit(
+    uint8_t* img,
+    int rows,
+    int cols,
+    int num_bits
+);
+
 void mnist_booleanize_img(uint8_t* img, uint32_t size, uint8_t threshold);
