@@ -100,14 +100,14 @@ void mnist_booleanize_img(uint8_t* img, uint32_t size, uint8_t threshold) {
 uint32_t mnist_image_info(const char* path, int* out_rows, int* out_cols) {
     FILE* f = fopen(path, "r");
     if (!f) {
-        ESP_LOGE(TAG, "Failed to open file %s", path);
+        LOGE(TAG, "Failed to open file %s", path);
         return 0;
     }
 
     uint8_t header[16];
     if (fread(header, 1, 16, f) != 16) { 
         fclose(f); 
-        ESP_LOGE(TAG, "Failed to read header from file %s", path);
+        LOGE(TAG, "Failed to read header from file %s", path);
         return 0;
     }
 
@@ -118,7 +118,7 @@ uint32_t mnist_image_info(const char* path, int* out_rows, int* out_cols) {
 
     if (magic != 0x00000803) { 
         fclose(f); 
-        ESP_LOGE(TAG, "Invalid magic number in file %s", path);
+        LOGE(TAG, "Invalid magic number in file %s", path);
         return 0;
     }
 
@@ -155,14 +155,14 @@ uint8_t* mnist_load_next_image(FILE* f, int idx, int rows, int cols) {
 uint32_t mnist_label_info(const char* path) {
     FILE* f = fopen(path, "r");
     if (!f) {
-        ESP_LOGE(TAG, "Failed to open file %s", path);
+        LOGE(TAG, "Failed to open file %s", path);
         return 0;
     }
 
     uint8_t header[8];
     if (fread(header, 1, 8, f) != 8) { 
         fclose(f); 
-        ESP_LOGE(TAG, "Failed to read header from file %s", path);
+        LOGE(TAG, "Failed to read header from file %s", path);
         return 0; 
     }
 
@@ -171,7 +171,7 @@ uint32_t mnist_label_info(const char* path) {
 
     if (magic != 0x00000801) { 
         fclose(f); 
-        ESP_LOGE(TAG, "Invalid magic number in file %s", path);
+        LOGE(TAG, "Invalid magic number in file %s", path);
         return 0; 
     }
 
