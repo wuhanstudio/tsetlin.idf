@@ -7,10 +7,13 @@ static struct fs_mount_t mp = {
     .fs_data = &fat_fs,
 };
 
-static const char *disk_mount_pt = DISK_MOUNT_PT;
-
 int sdcard_init() {
+    const char *disk_mount_pt = DISK_MOUNT_PT;
     mp.mnt_point = disk_mount_pt;
 
     return fs_mount(&mp);   
+}
+
+int sdcard_deinit() {
+    return fs_unmount(&mp);
 }

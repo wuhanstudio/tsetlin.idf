@@ -13,5 +13,6 @@
 #define DISK_MOUNT_PT "/"DISK_DRIVE_NAME":"
 
 int sdcard_init();
+int sdcard_deinit();
 
 #endif /* __SDCARD_H__ */

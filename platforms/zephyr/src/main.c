@@ -58,17 +58,21 @@ int main(void)
 
     if (res == FS_RET_OK) {
         printk("Disk mounted.\n");
+
         /* Try to unmount and remount the disk */
-        res = fs_unmount(&mp);
+        res = sdcard_deinit();
         if (res != FS_RET_OK) {
             printk("Error unmounting disk\n");
             return res;
         }
-        res = fs_mount(&mp);
+
+        res = sdcard_deinit();
         if (res != FS_RET_OK) {
             printk("Error remounting disk\n");
             return res;
         }
+
+	    const char *disk_mount_pt = DISK_MOUNT_PT;
         if (lsdir(disk_mount_pt) == 0) {
             printk("Directory is empty.\n");
         }
@@ -76,7 +80,7 @@ int main(void)
         printk("Error mounting disk.\n");
     }
 
-    fs_unmount(&mp);
+    sdcard_deinit();
 
     while (1) {
         k_sleep(K_MSEC(1000));
