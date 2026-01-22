@@ -155,6 +155,28 @@ int main(void)
         free(test_img);
     }
 
+    // Load Tsetlin model from file
+    size_t size = 0;
+    uint8_t* data = tsetlin_read_file(DISK_MOUNT_PT"/tsetlin_model.cpb", &size);
+    if (!data) {
+        printf("Failed to read file\n");
+        return -1;
+    }
+
+    Tsetlin* model = tsetlin__unpack(NULL, size, data);
+    free(data);
+
+    if (!model) {
+        printf("Failed to unpack protobuf\n");
+        return -1;
+    }
+
+    printf("n_class   = %u\n", model->n_class);
+    printf("n_feature = %u\n", model->n_feature);
+    printf("n_clause  = %u\n", model->n_clause);
+    printf("n_state   = %u\n", model->n_state);
+    printf("model_type = %u\n", model->model_type);
+
     sdcard_deinit();
 
     while (1) {
