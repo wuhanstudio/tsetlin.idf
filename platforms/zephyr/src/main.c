@@ -1,12 +1,26 @@
-#include <zephyr/kernel.h>
 #include <zephyr/device.h>
-#include <zephyr/storage/disk_access.h>
-#include <zephyr/logging/log.h>
-#include <zephyr/fs/fs.h>
+#include <zephyr/kernel.h>
+
+#include <mnist.h>
+#include <tsetlin.h>
 
 #include "sdcard.h"
 
 LOG_MODULE_REGISTER(main);
+static const char *TAG = "main";
+
+void print_progress(const char *label, int percent) {
+    const int bar_width = 40;
+    int filled = percent * bar_width / 100;
+
+    printf("%s [", label);
+    for (int i = 0; i < bar_width; i++) {
+        if (i < filled) printf("=");
+        else printf(" ");
+    }
+    printf("] %3d%%\r", percent);  // stay on same line
+    fflush(stdout);
+}
 
 static int lsdir(const char *path)
 {
@@ -55,29 +69,90 @@ static int lsdir(const char *path)
 int main(void)
 {
     int res = sdcard_init();
-
-    if (res == FS_RET_OK) {
-        printk("Disk mounted.\n");
-
-        /* Try to unmount and remount the disk */
-        res = sdcard_deinit();
-        if (res != FS_RET_OK) {
-            printk("Error unmounting disk\n");
-            return res;
-        }
-
-        res = sdcard_deinit();
-        if (res != FS_RET_OK) {
-            printk("Error remounting disk\n");
-            return res;
-        }
-
-	    const char *disk_mount_pt = DISK_MOUNT_PT;
-        if (lsdir(disk_mount_pt) == 0) {
-            printk("Directory is empty.\n");
-        }
-    } else {
+    
+    if (res != FS_RET_OK) {
         printk("Error mounting disk.\n");
+        return -1;
+    }
+
+    LOGI(TAG, "Disk mounted.\n");
+
+    res = lsdir(DISK_MOUNT_PT);
+
+    // Get training set info
+    int rows, cols;
+    uint32_t train_img_count = mnist_image_info(DISK_MOUNT_PT"/train-images-idx3-ubyte", &rows, &cols);
+    LOGI(TAG, "MNIST training set: %d images of size %dx%d", train_img_count, rows, cols);
+
+    uint32_t train_label_count = mnist_label_info(DISK_MOUNT_PT"/train-labels-idx1-ubyte");
+    LOGI(TAG, "MNIST training set: %d labels", train_label_count);
+    if (train_img_count != train_label_count) {
+        LOGE(TAG, "Image count and label count do not match!");
+        return -1;
+    }
+
+    // Get test set info
+    uint32_t test_img_count = mnist_image_info(DISK_MOUNT_PT"/t10k-images-idx3-ubyte", &rows, &cols);
+    LOGI(TAG, "MNIST test set: %d images of size %dx%d", test_img_count, rows, cols);
+
+    uint32_t test_label_count = mnist_label_info(DISK_MOUNT_PT"/t10k-labels-idx1-ubyte");
+    LOGI(TAG, "MNIST test set: %d labels", test_label_count);
+    if (test_img_count != test_label_count) {
+        LOGE(TAG, "Image count and label count do not match!");
+        return -1;
+    }
+
+    if (train_img_count == 0 || test_img_count == 0) {
+        LOGE(TAG, "No images found in dataset!");
+        return -1;
+    }
+
+    // Print mnist train image
+    int img_index = sys_rand32_get() % train_img_count;
+    LOGI(TAG, "Loading and printing training image %d", img_index);
+
+    FILE* f_train_imgs = fopen(DISK_MOUNT_PT"/train-images-idx3-ubyte", "r");
+    if (!f_train_imgs) {
+        LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/train-images-idx3-ubyte");
+        return -1;
+    }
+
+    FILE *f_train_labels = fopen(DISK_MOUNT_PT"/train-labels-idx1-ubyte", "r");
+    if (!f_train_labels) {
+        LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/train-labels-idx1-ubyte");
+        return -1;
+    }
+
+    uint8_t* train_img = mnist_load_image(f_train_imgs, img_index, rows, cols);
+    if (train_img) {
+        mnist_print_img(train_img);
+        int8_t train_label = mnist_load_label(f_train_labels, img_index);
+        LOGI(TAG, "Training image label: %d", train_label);
+        free(train_img);
+    } 
+
+    // Print mnist test image
+    img_index = sys_rand32_get() % test_img_count;
+    LOGI(TAG, "Loading and printing testing image %d", img_index);
+
+    FILE* f_test_imgs = fopen(DISK_MOUNT_PT"/t10k-images-idx3-ubyte", "r");
+    if (!f_test_imgs) {
+        LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/t10k-images-idx3-ubyte");
+        return -1;
+    }
+
+    FILE* f_test_labels = fopen(DISK_MOUNT_PT"/t10k-labels-idx1-ubyte", "r");
+    if (!f_test_labels) {
+        LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/t10k-labels-idx1-ubyte");
+        return -1;
+    }
+
+    uint8_t* test_img = mnist_load_image(f_test_imgs, img_index, rows, cols);
+    if (test_img) {
+        mnist_print_img(test_img);
+        int8_t test_label = mnist_load_label(f_test_labels, img_index);
+        LOGI(TAG, "Testing image label: %d", test_label);
+        free(test_img);
     }
 
     sdcard_deinit();

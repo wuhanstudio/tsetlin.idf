@@ -1,4 +1,5 @@
 #include "mnist.h"
+LOG_MODULE_REGISTER(mnist);
 
 static const char *TAG = "mnist";
 

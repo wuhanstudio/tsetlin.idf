@@ -1,6 +1,8 @@
 #ifndef __SDCARD_H__
 #define __SDCARD_H__
 
+#include <zephyr/fs/fs.h>
+
 #if defined(CONFIG_FAT_FILESYSTEM_ELM)
     #define FS_RET_OK FR_OK
 #else

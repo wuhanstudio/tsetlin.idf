@@ -11,7 +11,7 @@ float random_float_01(void) {
     rt_device_read(rng, 0, &r, sizeof(r));
 #endif
 
-    return (float)r / ((float)UINT32_MAX + 1.0);
+    return (float)r / ((float)UINT32_MAX + 1.0f);
 }
 
 void clause_update_type_I(ClauseCompressed* clause, uint8_t* input, int8_t clause_output, uint32_t n_state, uint32_t n_feature, float s) {
