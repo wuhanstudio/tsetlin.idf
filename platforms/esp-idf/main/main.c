@@ -4,11 +4,12 @@
 #include <esp_random.h>
 
 #include "sdcard.h"
-#include "mnist.h"
 
-#include "tsetlin.h"
-#include "clause.h"
-#include "tsetlin.pb-c.h"
+#include <mnist.h>
+
+#include <tsetlin.h>
+#include <clause.h>
+#include <tsetlin.pb-c.h>
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>

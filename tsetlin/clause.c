@@ -20,7 +20,7 @@ void clause_update_type_I(ClauseCompressed* clause, uint8_t* input, int8_t claus
         // Update positive literals
         for (size_t k = 0; k < clause->n_pos_literal; k++)
         {
-            uint32_t idx_literal = clause->position[k];
+            // uint32_t idx_literal = clause->position[k];
             if ( clause->data[k] > 1 && random_float_01() <= s1)
             {
                 // Decrease state for included positive literal
@@ -31,7 +31,7 @@ void clause_update_type_I(ClauseCompressed* clause, uint8_t* input, int8_t claus
         // Update negative literals
         for (size_t k = 0; k < clause->n_neg_literal; k++)
         {
-            uint32_t idx_literal = clause->position[clause->n_pos_literal + k];
+            // uint32_t idx_literal = clause->position[clause->n_pos_literal + k];
             if (clause->data[clause->n_pos_literal + k] > 1 && random_float_01() <= s1)
             {
                 // Decrease state for included negative literal
