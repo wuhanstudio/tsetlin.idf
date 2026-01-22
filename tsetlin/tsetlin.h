@@ -1,6 +1,9 @@
+#include <stdio.h>
+#include <string.h>
 #include <sys/unistd.h>
 
-#include "tsetlin.pb-c.h"
+#include <tsetlin.pb-c.h>
+#include "clause.h"
 
 uint8_t* tsetlin_read_file(const char* path, size_t* out_size);
 

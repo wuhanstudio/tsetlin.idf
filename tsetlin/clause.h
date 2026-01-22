@@ -1,8 +1,20 @@
 
 #include <sys/unistd.h>
-#include <esp_random.h>
+#include <tsetlin.pb-c.h>
 
-#include "tsetlin.pb-c.h"
+#if defined(ESP_PLATFORM)
+  /* ESP-IDF */
+  #include <esp_random.h>
+#elif defined(__ZEPHYR__)
+  /* Zephyr RTOS */
+  #include <zephyr/random/random.h>
+#elif defined(__RTTHREAD__)
+  /* RT-Thread RTOS */
+  #include <rtthread.h>
+  #include <rtdevice.h>
+#else
+  #error "Unsupported platform"
+#endif
 
 float random_float_01(void);
 

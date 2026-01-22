@@ -1,9 +1,4 @@
 #include "tsetlin.h"
-#include "clause.h"
-
-#include "tsetlin.pb-c.h"
-
-#include <esp_vfs_fat.h>
 
 uint8_t* tsetlin_read_file(const char* path, size_t* out_size) {
     FILE* f = fopen(path, "rb");
