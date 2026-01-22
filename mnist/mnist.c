@@ -1,6 +1,4 @@
 #include "mnist.h"
-#include <math.h>
-#include <esp_vfs_fat.h>
 
 static const char *TAG = "mnist";
 

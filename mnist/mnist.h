@@ -1,5 +1,8 @@
+#include <math.h>
+#include <stdio.h>
 #include <sys/unistd.h>
-#include <esp_vfs_fat.h>
+
+#include <logging.h>
 
 uint32_t mnist_image_info(const char* path, int* out_rows, int* out_cols);
 uint8_t* mnist_load_image(FILE* f, int idx, int rows, int cols);

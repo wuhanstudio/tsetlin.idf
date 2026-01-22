@@ -70,7 +70,21 @@ void tsetlin_step(Tsetlin* model, uint8_t* X_img, int8_t y_target, uint32_t T, f
     // Pair 2: Non-target classes
     uint8_t other_class = y_target;
     while (other_class == y_target) {
-        other_class = esp_random() % model->n_class;
+        #if defined(ESP_PLATFORM)
+            /* ESP-IDF */
+            other_class = esp_random() % model->n_class;
+        #elif defined(__ZEPHYR__)
+            /* Zephyr RTOS */
+            other_class = sys_rand32_get() % model->n_class;
+        #elif defined(__RTTHREAD__)
+            /* RT-Thread RTOS */
+            rt_uint32_t r;
+            rt_device_t rng = rt_device_find("rng");
+            rt_device_read(rng, 0, &r, sizeof(r));
+            other_class = r % model->n_class;
+        #else
+            #error "Unsupported platform"
+        #endif
     }
 
     class_sum = 0;

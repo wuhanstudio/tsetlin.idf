@@ -6,9 +6,9 @@ float random_float_01(void) {
 #elif defined(__ZEPHYR__)
     uint32_t r = sys_rand32_get();
 #elif defined(__RTTHREAD__)
-    rt_uint32_t val;
+    rt_uint32_t r;
     rt_device_t rng = rt_device_find("rng");
-    rt_device_read(rng, 0, &val, sizeof(val));
+    rt_device_read(rng, 0, &r, sizeof(r));
 #endif
 
     return (float)r / ((float)UINT32_MAX + 1.0);
