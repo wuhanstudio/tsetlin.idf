@@ -104,7 +104,7 @@ static void lime_tm_mnist(int argc, char* argv[]) {
     size_t size = 0;
     uint8_t* data = tsetlin_read_file(DISK_MOUNT_PT"/tsetlin_model.cpb", &size);
     if (!data) {
-        printf("Failed to read file\n");
+        LOGE(TAG, "Failed to read file\n");
         return;
     }
 
@@ -112,7 +112,7 @@ static void lime_tm_mnist(int argc, char* argv[]) {
     free(data);
 
     if (!model) {
-        printf("Failed to unpack protobuf\n");
+        LOGE(TAG, "Failed to unpack protobuf\n");
         return;
     }
 

@@ -159,7 +159,7 @@ int main(void)
     size_t size = 0;
     uint8_t* data = tsetlin_read_file(DISK_MOUNT_PT"/tsetlin_model.cpb", &size);
     if (!data) {
-        printf("Failed to read file\n");
+        LOGE(TAG, "Failed to read file\n");
         return -1;
     }
 
@@ -167,7 +167,7 @@ int main(void)
     free(data);
 
     if (!model) {
-        printf("Failed to unpack protobuf\n");
+        LOGE(TAG, "Failed to unpack protobuf\n");
         return -1;
     }
 

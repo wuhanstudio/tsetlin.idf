@@ -114,7 +114,7 @@ void app_main(void)
     size_t size = 0;
     uint8_t* data = tsetlin_read_file(MOUNT_POINT"/tsetlin_model_8_bit.cpb", &size);
     if (!data) {
-        printf("Failed to read file\n");
+        ESP_LOGE(TAG, "Failed to read file\n");
         return;
     }
 
@@ -122,7 +122,7 @@ void app_main(void)
     free(data);
 
     if (!model) {
-        printf("Failed to unpack protobuf\n");
+        ESP_LOGE(TAG, "Failed to unpack protobuf\n");
         return;
     }
 
@@ -137,14 +137,14 @@ void app_main(void)
 
     uint8_t* img = mnist_load_image(f_test_imgs, img_index, rows, cols);
     if (!img) {
-        printf("Failed to load test image\n");
+        ESP_LOGE(TAG, "Failed to load test image\n");
         tsetlin__free_unpacked(model, NULL);
         return;
     }
 
     int8_t label = mnist_load_label(f_test_labels, img_index);
     if (label < 0) {
-        printf("Failed to load test label\n");
+        ESP_LOGE(TAG, "Failed to load test label\n");
         free(img);
         tsetlin__free_unpacked(model, NULL);
         return;
