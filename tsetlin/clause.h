@@ -12,6 +12,7 @@
   /* RT-Thread RTOS */
   #include <rtthread.h>
   #include <rtdevice.h>
+  #include <fast_rand.h>
 #else
   #error "Unsupported platform"
 #endif

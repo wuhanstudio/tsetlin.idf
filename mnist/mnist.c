@@ -1,5 +1,8 @@
 #include "mnist.h"
-LOG_MODULE_REGISTER(mnist);
+
+#if defined(__ZEPHYR__)
+    LOG_MODULE_REGISTER(mnist);
+#endif
 
 static const char *TAG = "mnist";
 
