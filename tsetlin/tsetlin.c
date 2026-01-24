@@ -1,5 +1,7 @@
 #include "tsetlin.h"
 
+static const char* TAG = "tsetlin";
+
 uint8_t* tsetlin_read_file(const char* path, size_t* out_size) {
     FILE* f = fopen(path, "rb");
     if (!f) return NULL;
@@ -25,10 +27,20 @@ void tsetlin_step(Tsetlin* model, uint8_t* X_img, int8_t y_target, uint32_t T, f
     // Pair 1: Target class
     int32_t class_sum = 0;
     
-    int8_t pos_clauses_eval[model->n_clause / 2];
+    //int8_t pos_clauses_eval[model->n_clause / 2];
+    int8_t* pos_clauses_eval = (int8_t*)malloc(sizeof(int8_t) * model->n_clause / 2);
+    if (!pos_clauses_eval) {
+       LOGE(TAG, "Failed to allocate memory for pos clauses!");
+       return;
+    }
     memset(pos_clauses_eval, 0, sizeof(pos_clauses_eval));
 
-    int8_t neg_clauses_eval[model->n_clause / 2];
+    //int8_t neg_clauses_eval[model->n_clause / 2];
+    int8_t* neg_clauses_eval = (int8_t*)malloc(sizeof(int8_t) * model->n_clause / 2);
+    if (!neg_clauses_eval) {
+        LOGE(TAG, "Failed to allocate memory for neg clauses!");
+        return;
+    }
     memset(neg_clauses_eval, 0, sizeof(neg_clauses_eval));
 
     for (size_t i = 0; i <(size_t) model->n_clause / 2; i++)

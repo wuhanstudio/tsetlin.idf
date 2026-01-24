@@ -1,5 +1,10 @@
 
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/unistd.h>
+#endif
+
 #include <tsetlin.pb-c.h>
 
 #if defined(ESP_PLATFORM)

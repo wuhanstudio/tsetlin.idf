@@ -9,5 +9,7 @@ add_library(tsetlin STATIC
 )
 
 target_include_directories(tsetlin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(tsetlin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../)
 target_include_directories(tsetlin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../protobuf)
 target_include_directories(tsetlin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../random)
+target_include_directories(tsetlin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../utils)

@@ -1,4 +1,5 @@
 #include <time.h>
+#include <stdint.h>
 
 #include <mnist.h>
 #include <tsetlin.h>
@@ -6,12 +7,21 @@
 #define MOUNT_POINT "./mnist"
 static const char *TAG = "main";
 
-uint64_t get_tick_ms(void)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-}
+#ifdef _WIN32
+    #include <windows.h>
+
+    uint64_t get_tick_ms(void)
+    {
+        return GetTickCount64();
+    }
+#else
+    uint64_t get_tick_ms(void)
+    {
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    }
+#endif
 
 void print_progress(const char *label, int percent) {
     const int bar_width = 40;
@@ -146,7 +156,12 @@ int main(int argc, char* argv[]) {
     printf("Evaluating model on test image %d (label %d)\n", img_index, label);
     mnist_print_img(img);
 
-    int32_t votes[model->n_class];
+    //int32_t votes[model->n_class];
+    int32_t* votes = (int32_t*)malloc(sizeof(int32_t) * model->n_class);
+    if (!votes) {
+        LOGE(TAG, "Failed to allocate memory for votes");
+        return -1;
+    }
     uint8_t predicted_class = 0;
 
     // Booleanize image using threshold 75

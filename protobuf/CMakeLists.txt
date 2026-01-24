@@ -11,3 +11,5 @@ target_include_directories(tsetlin-pb PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(tsetlin-pb
     PUBLIC protobuf
 )
+
+target_include_directories(tsetlin-pb PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../)

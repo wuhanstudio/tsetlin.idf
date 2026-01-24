@@ -11,6 +11,10 @@ endif()
 
 project ("lime-tm")
 
+# Require a modern C standard
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
 # Include sub-projects.
 set(TSETLIN_SOURCE_DIR ${CMAKE_SOURCE_DIR}/../../tsetlin)
 set(TSETLIN_BINARY_DIR ${CMAKE_BINARY_DIR}/tsetlin)
@@ -33,6 +37,17 @@ set(MNIST_BINARY_DIR ${CMAKE_BINARY_DIR}/mnist)
 add_subdirectory(${MNIST_SOURCE_DIR} ${MNIST_BINARY_DIR})
 
 add_executable(lime-tm "main.c")
+
+if (MSVC)
+    set_source_files_properties(
+        ${PROTOBUF_SOURCE_DIR}/tsetlin.pb-c.c
+        PROPERTIES
+        LANGUAGE CXX
+    )
+endif()
+
+# Set the default startup project in Visual Studio
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT lime-tm)
 
 # List of libraries
 set(MAIN_LIBS 

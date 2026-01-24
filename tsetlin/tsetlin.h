@@ -1,9 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/unistd.h>
+#endif
 
 #include <tsetlin.pb-c.h>
+#include <logging.h>
 #include "clause.h"
 
 uint8_t* tsetlin_read_file(const char* path, size_t* out_size);
