@@ -108,7 +108,7 @@ int main(void)
     }
 
     // Print mnist train image
-    int img_index = sys_rand32_get() % train_img_count;
+    int img_index = fast_rand() % train_img_count;
     LOGI(TAG, "Loading and printing training image %d", img_index);
 
     FILE* f_train_imgs = fopen(DISK_MOUNT_PT"/train-images-idx3-ubyte", "rb");
@@ -136,7 +136,7 @@ int main(void)
     }
 
     // Print mnist test image
-    img_index = sys_rand32_get() % test_img_count;
+    img_index = fast_rand() % test_img_count;
     LOGI(TAG, "Loading and printing testing image %d", img_index);
 
     FILE* f_test_imgs = fopen(DISK_MOUNT_PT"/t10k-images-idx3-ubyte", "rb");

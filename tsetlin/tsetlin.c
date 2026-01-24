@@ -1,5 +1,9 @@
 #include "tsetlin.h"
 
+#if defined(__ZEPHYR__)
+    LOG_MODULE_REGISTER(tsetlin);
+#endif
+
 static const char* TAG = "tsetlin";
 
 uint8_t* tsetlin_read_file(const char* path, size_t* out_size) {
@@ -33,7 +37,7 @@ void tsetlin_step(Tsetlin* model, uint8_t* X_img, int8_t y_target, uint32_t T, f
        LOGE(TAG, "Failed to allocate memory for pos clauses!");
        return;
     }
-    memset(pos_clauses_eval, 0, sizeof(pos_clauses_eval));
+    memset(pos_clauses_eval, 0, sizeof(int8_t) * model->n_clause / 2);
 
     //int8_t neg_clauses_eval[model->n_clause / 2];
     int8_t* neg_clauses_eval = (int8_t*)malloc(sizeof(int8_t) * model->n_clause / 2);
@@ -41,7 +45,7 @@ void tsetlin_step(Tsetlin* model, uint8_t* X_img, int8_t y_target, uint32_t T, f
         LOGE(TAG, "Failed to allocate memory for neg clauses!");
         return;
     }
-    memset(neg_clauses_eval, 0, sizeof(neg_clauses_eval));
+    memset(neg_clauses_eval, 0, sizeof(int8_t) * model->n_clause / 2);
 
     for (size_t i = 0; i <(size_t) model->n_clause / 2; i++)
     {
@@ -87,18 +91,18 @@ void tsetlin_step(Tsetlin* model, uint8_t* X_img, int8_t y_target, uint32_t T, f
             other_class = esp_random() % model->n_class;
         #elif defined(__ZEPHYR__)
             /* Zephyr RTOS */
-            other_class = sys_rand32_get() % model->n_class;
+            other_class = fast_rand() % model->n_class;
         #elif defined(__RTTHREAD__)
             /* RT-Thread RTOS */
-            other_class = pcg32_fast() % model->n_class;
+            other_class = fast_rand() % model->n_class;
         #else
-            other_class = pcg32_fast() % model->n_class;
+            other_class = fast_rand() % model->n_class;
         #endif
     }
 
     class_sum = 0;
-    memset(pos_clauses_eval, 0, sizeof(pos_clauses_eval));
-    memset(neg_clauses_eval, 0, sizeof(neg_clauses_eval));
+    memset(pos_clauses_eval, 0, sizeof(int8_t) * model->n_clause / 2);
+    memset(neg_clauses_eval, 0, sizeof(int8_t) * model->n_clause / 2);
     for (size_t i = 0; i <(size_t) model->n_clause / 2; i++)
     {
         ClauseCompressed* p_clause = model->clauses_compressed[other_class * model->n_clause + i * 2];

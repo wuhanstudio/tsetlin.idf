@@ -12,7 +12,7 @@
   #include <esp_random.h>
 #elif defined(__ZEPHYR__)
   /* Zephyr RTOS */
-  #include <zephyr/random/random.h>
+  #include <fast_rand.h>
 #elif defined(__RTTHREAD__)
   /* RT-Thread RTOS */
   #include <rtthread.h>
