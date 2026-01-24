@@ -57,7 +57,8 @@ set(MAIN_LIBS
 )
 
 # Cross-platform math library linking
-if (UNIX)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
+   CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     # On Linux/macOS, link libm for math functions
     list(APPEND MAIN_LIBS m)
 endif()
