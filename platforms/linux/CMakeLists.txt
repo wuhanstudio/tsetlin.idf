@@ -68,6 +68,8 @@ target_include_directories(lime-tm
     PUBLIC ${CMAKE_SOURCE_DIR}/../../utils
 )
 
+message(STATUS "CMAKE_SYSTEM_NAME = ${CMAKE_SYSTEM_NAME}")
+
 # Link to the subfolder libraries
 target_link_libraries(lime-tm 
 	PRIVATE ${MAIN_LIBS}
