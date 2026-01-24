@@ -7,6 +7,8 @@ float random_float_01(void) {
     uint32_t r = sys_rand32_get();
 #elif defined(__RTTHREAD__)
     rt_uint32_t r = pcg32_fast();
+#else
+    uint32_t r = pcg32_fast();
 #endif
 
     return (float)r / ((float)UINT32_MAX + 1.0f);

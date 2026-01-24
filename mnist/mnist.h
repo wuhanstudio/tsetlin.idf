@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/unistd.h>
 
+#include <stdint.h>
 #include <logging.h>
 
 uint32_t mnist_image_info(const char* path, int* out_rows, int* out_cols);

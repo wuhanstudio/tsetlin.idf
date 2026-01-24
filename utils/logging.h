@@ -29,6 +29,15 @@
     #define LOGW(tag, fmt, ...) rt_kprintf("[W][%s] " fmt "\n", tag, ##__VA_ARGS__)
     #define LOGI(tag, fmt, ...) rt_kprintf("[I][%s] " fmt "\n", tag, ##__VA_ARGS__)
     #define LOGD(tag, fmt, ...) rt_kprintf("[D][%s] " fmt "\n", tag, ##__VA_ARGS__)
+
+#else
+    /* ================= POSIX ================= */
+    #include <stdio.h>
+
+    #define LOGE(tag, fmt, ...) printf("[E][%s] " fmt "\n", tag, ##__VA_ARGS__)
+    #define LOGW(tag, fmt, ...) printf("[W][%s] " fmt "\n", tag, ##__VA_ARGS__)
+    #define LOGI(tag, fmt, ...) printf("[I][%s] " fmt "\n", tag, ##__VA_ARGS__)
+    #define LOGD(tag, fmt, ...) printf("[D][%s] " fmt "\n", tag, ##__VA_ARGS__)
 #endif
 
 #endif /* UTILS_LOGGING_H */

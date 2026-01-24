@@ -14,7 +14,8 @@
   #include <rtdevice.h>
   #include <fast_rand.h>
 #else
-  #error "Unsupported platform"
+  /* POSIX */
+  #include <fast_rand.h>
 #endif
 
 float random_float_01(void);

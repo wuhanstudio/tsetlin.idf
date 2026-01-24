@@ -78,12 +78,9 @@ void tsetlin_step(Tsetlin* model, uint8_t* X_img, int8_t y_target, uint32_t T, f
             other_class = sys_rand32_get() % model->n_class;
         #elif defined(__RTTHREAD__)
             /* RT-Thread RTOS */
-            rt_uint32_t r;
-            rt_device_t rng = rt_device_find("rng");
-            rt_device_read(rng, 0, &r, sizeof(r));
-            other_class = r % model->n_class;
+            other_class = pcg32_fast() % model->n_class;
         #else
-            #error "Unsupported platform"
+            other_class = pcg32_fast() % model->n_class;
         #endif
     }
 

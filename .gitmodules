@@ -1,0 +1,3 @@
+[submodule "platforms/linux/mnist"]
+	path = platforms/linux/mnist
+	url = https://github.com/wuhanstudio/mnist
