@@ -56,13 +56,13 @@ static void lime_tm_mnist(int argc, char* argv[]) {
     int img_index = fast_rand() % train_img_count;
     LOGI(TAG, "Loading and printing training image %d", img_index);
 
-    FILE* f_train_imgs = fopen(DISK_MOUNT_PT"/train-images-idx3-ubyte", "r");
+    FILE* f_train_imgs = fopen(DISK_MOUNT_PT"/train-images-idx3-ubyte", "rb");
     if (!f_train_imgs) {
         LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/train-images-idx3-ubyte");
         return;
     }
 
-    FILE *f_train_labels = fopen(DISK_MOUNT_PT"/train-labels-idx1-ubyte", "r");
+    FILE *f_train_labels = fopen(DISK_MOUNT_PT"/train-labels-idx1-ubyte", "rb");
     if (!f_train_labels) {
         LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/train-labels-idx1-ubyte");
         return;
@@ -74,7 +74,11 @@ static void lime_tm_mnist(int argc, char* argv[]) {
         int8_t train_label = mnist_load_label(f_train_labels, img_index);
         LOGI(TAG, "Training image label: %d", train_label);
         free(train_img);
-    } 
+    }
+    else {
+        LOGE(TAG, "Failed to load train images");
+        return;
+    }
 
     // Print mnist test image
     img_index = fast_rand() % test_img_count;
@@ -98,6 +102,10 @@ static void lime_tm_mnist(int argc, char* argv[]) {
         int8_t test_label = mnist_load_label(f_test_labels, img_index);
         LOGI(TAG, "Testing image label: %d", test_label);
         free(test_img);
+    }
+    else {
+        LOGE(TAG, "Failed to load test images");
+        return;
     }
 
 	// Load Tsetlin model from file

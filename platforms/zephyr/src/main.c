@@ -111,13 +111,13 @@ int main(void)
     int img_index = sys_rand32_get() % train_img_count;
     LOGI(TAG, "Loading and printing training image %d", img_index);
 
-    FILE* f_train_imgs = fopen(DISK_MOUNT_PT"/train-images-idx3-ubyte", "r");
+    FILE* f_train_imgs = fopen(DISK_MOUNT_PT"/train-images-idx3-ubyte", "rb");
     if (!f_train_imgs) {
         LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/train-images-idx3-ubyte");
         return -1;
     }
 
-    FILE *f_train_labels = fopen(DISK_MOUNT_PT"/train-labels-idx1-ubyte", "r");
+    FILE *f_train_labels = fopen(DISK_MOUNT_PT"/train-labels-idx1-ubyte", "rb");
     if (!f_train_labels) {
         LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/train-labels-idx1-ubyte");
         return -1;
@@ -130,18 +130,22 @@ int main(void)
         LOGI(TAG, "Training image label: %d", train_label);
         free(train_img);
     } 
+    else {
+        LOGE(TAG, "Failed to load train images");
+        return -1;
+    }
 
     // Print mnist test image
     img_index = sys_rand32_get() % test_img_count;
     LOGI(TAG, "Loading and printing testing image %d", img_index);
 
-    FILE* f_test_imgs = fopen(DISK_MOUNT_PT"/t10k-images-idx3-ubyte", "r");
+    FILE* f_test_imgs = fopen(DISK_MOUNT_PT"/t10k-images-idx3-ubyte", "rb");
     if (!f_test_imgs) {
         LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/t10k-images-idx3-ubyte");
         return -1;
     }
 
-    FILE* f_test_labels = fopen(DISK_MOUNT_PT"/t10k-labels-idx1-ubyte", "r");
+    FILE* f_test_labels = fopen(DISK_MOUNT_PT"/t10k-labels-idx1-ubyte", "rb");
     if (!f_test_labels) {
         LOGE(TAG, "Failed to open file %s", DISK_MOUNT_PT"/t10k-labels-idx1-ubyte");
         return -1;
@@ -153,6 +157,10 @@ int main(void)
         int8_t test_label = mnist_load_label(f_test_labels, img_index);
         LOGI(TAG, "Testing image label: %d", test_label);
         free(test_img);
+    }
+    else {
+        LOGE(TAG, "Failed to load test images");
+        return -1;
     }
 
     // Load Tsetlin model from file

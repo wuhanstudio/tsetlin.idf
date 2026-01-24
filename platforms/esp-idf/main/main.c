@@ -66,13 +66,13 @@ void app_main(void)
     int img_index = esp_random() % train_img_count;
     ESP_LOGI(TAG, "Loading and printing training image %d", img_index);
 
-    FILE* f_train_imgs = fopen(MOUNT_POINT"/train-images-idx3-ubyte", "r");
+    FILE* f_train_imgs = fopen(MOUNT_POINT"/train-images-idx3-ubyte", "rb");
     if (!f_train_imgs) {
         ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/train-images-idx3-ubyte");
         return;
     }
 
-    FILE *f_train_labels = fopen(MOUNT_POINT"/train-labels-idx1-ubyte", "r");
+    FILE *f_train_labels = fopen(MOUNT_POINT"/train-labels-idx1-ubyte", "rb");
     if (!f_train_labels) {
         ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/train-labels-idx1-ubyte");
         return;
@@ -85,18 +85,22 @@ void app_main(void)
         ESP_LOGI(TAG, "Training image label: %d", train_label);
         free(train_img);
     } 
+    else {
+        ESP_LOGE(TAG, "Failed to load train images");
+        return;
+    }
 
     // Print mnist test image
     img_index = esp_random() % test_img_count;
     ESP_LOGI(TAG, "Loading and printing testing image %d", img_index);
 
-    FILE* f_test_imgs = fopen(MOUNT_POINT"/t10k-images-idx3-ubyte", "r");
+    FILE* f_test_imgs = fopen(MOUNT_POINT"/t10k-images-idx3-ubyte", "rb");
     if (!f_test_imgs) {
         ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/t10k-images-idx3-ubyte");
         return;
     }
 
-    FILE* f_test_labels = fopen(MOUNT_POINT"/t10k-labels-idx1-ubyte", "r");
+    FILE* f_test_labels = fopen(MOUNT_POINT"/t10k-labels-idx1-ubyte", "rb");
     if (!f_test_labels) {
         ESP_LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/t10k-labels-idx1-ubyte");
         return;
@@ -108,6 +112,10 @@ void app_main(void)
         int8_t test_label = mnist_load_label(f_test_labels, img_index);
         ESP_LOGI(TAG, "Testing image label: %d", test_label);
         free(test_img);
+    }
+    else {
+        ESP_LOGE(TAG, "Failed to load test images");
+        return;
     }
 
     // Load Tsetlin model from file

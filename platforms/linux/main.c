@@ -69,13 +69,13 @@ int main(int argc, char* argv[]) {
     int img_index = fast_rand() % train_img_count;
     LOGI(TAG, "Loading and printing training image %d", img_index);
 
-    FILE* f_train_imgs = fopen(MOUNT_POINT"/train-images-idx3-ubyte", "r");
+    FILE* f_train_imgs = fopen(MOUNT_POINT"/train-images-idx3-ubyte", "rb");
     if (!f_train_imgs) {
         LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/train-images-idx3-ubyte");
         return -1;
     }
 
-    FILE *f_train_labels = fopen(MOUNT_POINT"/train-labels-idx1-ubyte", "r");
+    FILE *f_train_labels = fopen(MOUNT_POINT"/train-labels-idx1-ubyte", "rb");
     if (!f_train_labels) {
         LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/train-labels-idx1-ubyte");
         return -1;
@@ -87,19 +87,23 @@ int main(int argc, char* argv[]) {
         int8_t train_label = mnist_load_label(f_train_labels, img_index);
         LOGI(TAG, "Training image label: %d", train_label);
         free(train_img);
-    } 
+    }
+    else {
+        LOGE(TAG, "Failed to load train images");
+        return -1;
+    }
 
     // Print mnist test image
     img_index = fast_rand() % test_img_count;
     LOGI(TAG, "Loading and printing testing image %d", img_index);
 
-    FILE* f_test_imgs = fopen(MOUNT_POINT"/t10k-images-idx3-ubyte", "r");
+    FILE* f_test_imgs = fopen(MOUNT_POINT"/t10k-images-idx3-ubyte", "rb");
     if (!f_test_imgs) {
         LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/t10k-images-idx3-ubyte");
         return -1;
     }
 
-    FILE* f_test_labels = fopen(MOUNT_POINT"/t10k-labels-idx1-ubyte", "r");
+    FILE* f_test_labels = fopen(MOUNT_POINT"/t10k-labels-idx1-ubyte", "rb");
     if (!f_test_labels) {
         LOGE(TAG, "Failed to open file %s", MOUNT_POINT"/t10k-labels-idx1-ubyte");
         return -1;
@@ -111,6 +115,10 @@ int main(int argc, char* argv[]) {
         int8_t test_label = mnist_load_label(f_test_labels, img_index);
         LOGI(TAG, "Testing image label: %d", test_label);
         free(test_img);
+    }
+    else {
+        LOGE(TAG, "Failed to load test images");
+        return -1;
     }
 
     // Load Tsetlin model from file
