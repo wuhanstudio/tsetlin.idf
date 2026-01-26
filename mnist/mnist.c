@@ -102,7 +102,7 @@ void mnist_booleanize_img(uint8_t* img, uint32_t size, uint8_t threshold) {
 }
 
 uint32_t mnist_image_info(const char* path, int* out_rows, int* out_cols) {
-    FILE* f = fopen(path, "r");
+    FILE* f = fopen(path, "rb");
     if (!f) {
         LOGE(TAG, "Failed to open file %s", path);
         return 0;
@@ -157,7 +157,7 @@ uint8_t* mnist_load_next_image(FILE* f, int idx, int rows, int cols) {
 }
 
 uint32_t mnist_label_info(const char* path) {
-    FILE* f = fopen(path, "r");
+    FILE* f = fopen(path, "rb");
     if (!f) {
         LOGE(TAG, "Failed to open file %s", path);
         return 0;
