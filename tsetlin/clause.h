@@ -7,12 +7,12 @@
 
 #include <tsetlin.pb-c.h>
 
-#if defined(ESP_PLATFORM)
-  /* ESP-IDF */
-  #include <esp_random.h>
-#elif defined(__ZEPHYR__)
+#if defined(__ZEPHYR__)
   /* Zephyr RTOS */
   #include <fast_rand.h>
+#elif defined(ESP_PLATFORM)
+  /* ESP-IDF */
+  #include <esp_random.h>
 #elif defined(__RTTHREAD__)
   /* RT-Thread RTOS */
   #include <rtthread.h>

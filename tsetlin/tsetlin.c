@@ -86,12 +86,12 @@ void tsetlin_step(Tsetlin* model, uint8_t* X_img, int8_t y_target, uint32_t T, f
     // Pair 2: Non-target classes
     uint8_t other_class = y_target;
     while (other_class == y_target) {
-        #if defined(ESP_PLATFORM)
-            /* ESP-IDF */
-            other_class = esp_random() % model->n_class;
-        #elif defined(__ZEPHYR__)
+        #if defined(__ZEPHYR__)
             /* Zephyr RTOS */
             other_class = fast_rand() % model->n_class;
+        #elif defined(ESP_PLATFORM)
+            /* ESP-IDF */
+            other_class = esp_random() % model->n_class;
         #elif defined(__RTTHREAD__)
             /* RT-Thread RTOS */
             other_class = fast_rand() % model->n_class;

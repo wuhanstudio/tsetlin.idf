@@ -1,11 +1,11 @@
 #include "clause.h"
 
 float random_float_01(void) {
-#if defined(ESP_PLATFORM)
-    uint32_t r = esp_random();
-#elif defined(__ZEPHYR__)
+#if defined(__ZEPHYR__)
     // uint32_t r = sys_rand32_get();
     uint32_t r = pcg32_fast();
+#elif defined(ESP_PLATFORM)
+    uint32_t r = esp_random();
 #elif defined(__RTTHREAD__)
     rt_uint32_t r = pcg32_fast();
 #else
