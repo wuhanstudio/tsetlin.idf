@@ -24,6 +24,8 @@ void print_progress(const char *label, int percent) {
 
 int main(void)
 {
+    k_sleep(K_MSEC(5000));
+
     int res = sdcard_init();
     
     if (res != FS_RET_OK) {
@@ -32,8 +34,6 @@ int main(void)
     }
 
     LOGI(TAG, "Disk mounted.\n");
-
-    k_sleep(K_MSEC(5000));
 
     // Get training set info
     int rows, cols;
