@@ -211,8 +211,8 @@ void mnist_print_img(const uint8_t* buf)
             int index = 0; 
             if(buf[y*28+x] > 75) index =69;
             if(index < 0) index = 0;
-            printf("%c",codeLib[index]);
-            printf("%c",codeLib[index]);
+                printf("%c",codeLib[index]);
+                printf("%c",codeLib[index]);
         }
         printf("\n");
     }

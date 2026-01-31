@@ -1,6 +1,8 @@
 #include "tsetlin.h"
 
 #if defined(__ZEPHYR__)
+    /* Zephyr RTOS */
+    #include <zephyr/fs/fs.h>
     LOG_MODULE_REGISTER(tsetlin);
 #endif
 
@@ -8,14 +10,18 @@ static const char* TAG = "tsetlin";
 
 uint8_t* tsetlin_read_file(const char* path, size_t* out_size) {
     FILE* f = fopen(path, "rb");
-    if (!f) return NULL;
+    if (!f) {
+        LOGE(TAG, "Failed to open file %s", path);
+        return NULL;
+    }
 
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    uint8_t* buffer = malloc(size);
+    uint8_t* buffer = malloc(sizeof(uint8_t) * size);
     if (!buffer) {
+        LOGE(TAG, "Failed to allocate memory");
         fclose(f);
         return NULL;
     }
