@@ -13,12 +13,12 @@ void print_progress(const char *label, int percent) {
     const int bar_width = 40;
     int filled = percent * bar_width / 100;
 
-    printk("%s [", label);
+    printf("%s [", label);
     for (int i = 0; i < bar_width; i++) {
-        if (i < filled) printk("=");
-        else printk(" ");
+        if (i < filled) printf("=");
+        else printf(" ");
     }
-    printk("] %3d%%\r", percent);  // stay on same line
+    printf("] %3d%%\r", percent);  // stay on same line
     fflush(stdout);
 }
 
@@ -187,79 +187,76 @@ int main(void)
 
     // Evaluate on the entire test set
     int correct = 0;
-    if (1) {
 
-        long total_utility_time = 0;
-        long total_calc_time = 0;
+    long total_utility_time = 0;
+    long total_calc_time = 0;
 
-        for (uint32_t i = 0; i < test_img_count; i++)
-        {
-            uint32_t start_utility = k_uptime_get_32();
+    for (uint32_t i = 0; i < test_img_count; i++)
+    {
+        uint32_t start_utility = k_uptime_get_32();
 
-            if( i == 0) {
-                // Skip the header
-                fseek(f_test_imgs, 16, SEEK_SET);
-                fseek(f_test_labels, 8, SEEK_SET);
-            }
-
-            uint8_t* img = mnist_load_next_image(f_test_imgs, i, rows, cols);
-            if (!img) {
-                LOGE(TAG, "Failed to load test image %d", i);
-                continue;
-            }
-
-            int8_t label = mnist_load_next_label(f_test_labels, i);
-            if (label < 0) {
-                LOGE(TAG, "Failed to load test label %d", i);
-                free(img);
-                continue;
-            }
-
-            total_utility_time += (k_uptime_get_32() - start_utility);
-
-            uint32_t start = k_uptime_get_32();
-
-            // Booleanize image using threshold 75
-            // mnist_booleanize_img(img, rows * cols, 75);
-
-            // Booleanize image using 8-bit representation
-            uint8_t* bool_img = mnist_booleanize_img_n_bit(img, rows, cols, 8);
-            free(img);
-
-            tsetlin_evaluate(model, bool_img, votes, &predicted_class);
-            if (predicted_class == label) {
-                correct++;
-            }
-
-            total_calc_time += (k_uptime_get_32() - start);
-
-            free(bool_img);
-            
-            // Print progress every 1000 images
-            if ((i + 1) % 1000 == 0) {
-                char message[32];
-                snprintf(message, sizeof(message), "Testing %d/%d", i + 1, test_img_count);
-                print_progress(message, (i + 1) * 100 / test_img_count);
-                // printf("Processed %d/%d test images\n", i + 1, test_img_count);
-            }
+        if( i == 0) {
+            // Skip the header
+            fseek(f_test_imgs, 16, SEEK_SET);
+            fseek(f_test_labels, 8, SEEK_SET);
         }
-        LOGI(TAG, "");
 
-        float tks = test_img_count / (double)(total_calc_time) * 1000;
-        LOGI(TAG, "[TM] Achieved images/s: %d", k_ticks_to_ms_floor32(tks));
+        uint8_t* img = mnist_load_next_image(f_test_imgs, i, rows, cols);
+        if (!img) {
+            LOGE(TAG, "Failed to load test image %d", i);
+            continue;
+        }
 
-        float uts = test_img_count / (double)(total_utility_time) * 1000;
-        LOGI(TAG, "[UM] Achieved images/s: %d", k_ticks_to_ms_floor32(uts));
+        int8_t label = mnist_load_next_label(f_test_labels, i);
+        if (label < 0) {
+            LOGE(TAG, "Failed to load test label %d", i);
+            free(img);
+            continue;
+        }
 
-        LOGI(TAG, "Accuracy on test set (%d): %.2f%%\n", test_img_count, (double)correct / test_img_count * 100);
+        total_utility_time += (k_uptime_get_32() - start_utility);
+
+        uint32_t start = k_uptime_get_32();
+
+        // Booleanize image using threshold 75
+        // mnist_booleanize_img(img, rows * cols, 75);
+
+        // Booleanize image using 8-bit representation
+        uint8_t* bool_img = mnist_booleanize_img_n_bit(img, rows, cols, 8);
+        free(img);
+
+        tsetlin_evaluate(model, bool_img, votes, &predicted_class);
+        if (predicted_class == label) {
+            correct++;
+        }
+
+        total_calc_time += (k_uptime_get_32() - start);
+
+        free(bool_img);
+
+        // Print progress every 1000 images
+        if ((i + 1) % 1000 == 0) {
+            char message[32];
+            snprintf(message, sizeof(message), "Testing %d/%d", i + 1, test_img_count);
+            print_progress(message, (i + 1) * 100 / test_img_count);
+        }
     }
+    LOGI(TAG, "");
+
+    double tks = test_img_count / (double)(k_ticks_to_ms_floor32(total_calc_time)) * 1000;
+    printf("[TM] Achieved images/s: %f\n", tks);
+
+    double uts = test_img_count / (double)(k_ticks_to_ms_floor32(total_utility_time)) * 1000;
+    printf("[UM] Achieved images/s: %f\n", uts);
+
+    printf("Accuracy on test set (%d): %.2f%% \n", test_img_count, (double)correct / test_img_count * 100);
 
     // Test the random number generator speed
     const uint32_t N_RAND = 10;
     for (uint32_t i = 0; i < N_RAND; i++)
     {
         float r = random_float_01();
-        LOGI(TAG, "Random float %d: %f", i, (double) r);
+        printf("Random float %d: %f\n", i, (double) r);
     }
 
     // Train the model on the training set
@@ -278,13 +275,13 @@ int main(void)
 
             uint8_t* X_img = mnist_load_next_image(f_train_imgs, j, rows, cols);
             if (!X_img) {
-                printf("Failed to load train image %d\n", j);
+                LOGE(TAG, "Failed to load train image %d", j);
                 continue;
             }
 
             int8_t y_target = mnist_load_next_label(f_train_labels, j);
             if (y_target < 0) {
-                printf("Failed to load train label %d\n", j);
+                LOGE(TAG, "Failed to load train label %d", j);
                 continue;
             }
 
@@ -303,7 +300,6 @@ int main(void)
                 char message[32];
                 snprintf(message, sizeof(message), "Epoch %d: Processed %d/%d", i + 1, j + 1, train_img_count);
                 print_progress(message, (j + 1) * 100 / train_img_count);
-                // printf("Epoch %d: Processed %d/%d training images\n", i + 1, j + 1, train_img_count);
             }
         }
 
@@ -321,13 +317,13 @@ int main(void)
 
             uint8_t* img = mnist_load_next_image(f_test_imgs, j, rows, cols);
             if (!img) {
-                printf("Failed to load test image %d\n", j);
+                LOGE(TAG, "Failed to load test image %d", j);
                 continue;
             }
 
             int8_t label = mnist_load_next_label(f_test_labels, j);
             if (label < 0) {
-                printf("Failed to load test label %d\n", j);
+                LOGE(TAG, "Failed to load test label %d", j);
                 free(img);
                 continue;
             }
