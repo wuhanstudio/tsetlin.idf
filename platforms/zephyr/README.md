@@ -24,7 +24,7 @@ Step 3: Build
 $ west build -b pandora_stm32l475
 $ west build -b black_f407zg_pro
 
-$ west build -b esp32_cam/esp32/procpu --sysbuild
+$ west build -b esp32_devkitc/esp32/procpu
 $ west build -b mini_stm32h743
 
 $ dfu-util -a 0 -s 0x08000000:leave -D build/zephyr/zephyr.bin   
